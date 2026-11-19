@@ -1,11 +1,13 @@
 #include "elrs.h"
 
+#include <inttypes.h>
 #include <stddef.h>
 #include <string.h>
 
 #include "crsf.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
+#include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -20,6 +22,7 @@
 #define ELRS_POLL_MS 10U
 #define ELRS_MAX_POLL_GAP_US INT64_C(50000)
 #define ELRS_FRAME_GAP_US INT64_C(20000)
+#define ELRS_WARNING_PERIOD_US INT64_C(1000000)
 #define ELRS_SIGNAL_TIMEOUT_US ((int64_t)CONFIG_ELRS_SIGNAL_TIMEOUT_MS * INT64_C(1000))
 
 _Static_assert(ELRS_CHANNEL_COUNT == CRSF_CHANNEL_COUNT, "Channel count mismatch");
@@ -29,6 +32,7 @@ static QueueHandle_t s_sample_queue;
 static StaticQueue_t s_sample_queue_control;
 static uint8_t s_sample_queue_storage[sizeof(elrs_sample_t)];
 static uint16_t s_required_channel_mask;
+static const char *const TAG = "elrs";
 
 static void invalidate_sample(elrs_sample_t *sample)
 {
@@ -48,6 +52,11 @@ static void receiver_task(void *argument)
     uint8_t buffer[128];
     int64_t previous_poll_us = esp_timer_get_time();
     int64_t last_data_us = 0;
+    int64_t last_warning_us = previous_poll_us;
+    uint32_t logged_uart_errors = 0U;
+    esp_err_t last_uart_error = ESP_OK;
+    bool recovery_pending = false;
+    bool error_logged = false;
 
     for (;;) {
         uart_event_t event;
@@ -71,14 +80,30 @@ static void receiver_task(void *argument)
         const int64_t now_us = esp_timer_get_time();
         /* Discard buffered commands after a scheduling stall. */
         if (uart_error || ((now_us - previous_poll_us) >= ELRS_MAX_POLL_GAP_US)) {
-            ESP_ERROR_CHECK(uart_flush_input(ELRS_UART));
+            ++sample.uart_errors;
+            last_uart_error = uart_error ? ESP_FAIL : ESP_ERR_TIMEOUT;
+            recovery_pending = true;
+        }
+        /* Accept no buffered data until a flush succeeds. */
+        if (recovery_pending) {
+            const esp_err_t error = uart_flush_input(ELRS_UART);
+            if (error != ESP_OK) {
+                ++sample.uart_errors;
+                last_uart_error = error;
+            }
+            recovery_pending = (error != ESP_OK);
             (void)xQueueReset(s_uart_queue);
             crsf_parser_reset(&parser);
             invalidate_sample(&sample);
-            ++sample.uart_errors;
         } else {
             size_t buffered = 0U;
-            ESP_ERROR_CHECK(uart_get_buffered_data_len(ELRS_UART, &buffered));
+            const esp_err_t error = uart_get_buffered_data_len(ELRS_UART, &buffered);
+            if (error != ESP_OK) {
+                ++sample.uart_errors;
+                last_uart_error = error;
+                recovery_pending = true;
+                buffered = 0U;
+            }
             if ((buffered > 0U) && ((now_us - last_data_us) >= ELRS_FRAME_GAP_US)) {
                 crsf_parser_reset(&parser);
             }
@@ -92,8 +117,9 @@ static void receiver_task(void *argument)
 
                 const int received = uart_read_bytes(ELRS_UART, buffer, (uint32_t)to_read, 0);
                 if (received <= 0) {
-                    invalidate_sample(&sample);
                     ++sample.uart_errors;
+                    last_uart_error = received < 0 ? ESP_FAIL : ESP_ERR_TIMEOUT;
+                    recovery_pending = true;
                     break;
                 }
 
@@ -121,6 +147,10 @@ static void receiver_task(void *argument)
                 }
                 last_data_us = now_us;
             }
+            if (recovery_pending) {
+                crsf_parser_reset(&parser);
+                invalidate_sample(&sample);
+            }
         }
 
         previous_poll_us = now_us;
@@ -132,6 +162,15 @@ static void receiver_task(void *argument)
             invalidate_sample(&sample);
         }
         (void)xQueueOverwrite(s_sample_queue, &sample);
+        if ((sample.uart_errors != logged_uart_errors) &&
+            (!error_logged || ((now_us - last_warning_us) >= ELRS_WARNING_PERIOD_US))) {
+            ESP_LOGW(TAG, "UART RX errors=%" PRIu32 " last=%s recovery=%s",
+                     sample.uart_errors, esp_err_to_name(last_uart_error),
+                     recovery_pending ? "pending" : "ready");
+            logged_uart_errors = sample.uart_errors;
+            last_warning_us = now_us;
+            error_logged = true;
+        }
     }
 }
 

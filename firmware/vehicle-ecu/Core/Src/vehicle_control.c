@@ -55,13 +55,15 @@ void vehicle_control_init(void)
     steering_calibration_service_init(&s_calibration, HAL_GetTick());
     (void)steering_controller_init(&s_controller,
                                    s_calibration.has_saved ? &s_calibration.saved : NULL);
-    s_wait_neutral = control_watchdog_was_reset();
+    s_wait_neutral = true;
     s_steering_mode = STEERING_MODE_OFF;
     s_centering_since = 0U;
     s_centered_since = 0U;
     s_center_stable = false;
-    if (s_wait_neutral) {
+    if (control_watchdog_was_reset()) {
         vehicle_log_text("WATCHDOG RESET | release both sticks to resume; outputs asleep");
+    } else {
+        vehicle_log_text("WAIT_NEUTRAL | release both sticks to enable outputs");
     }
     steering_calibration_service_log_status(&s_calibration);
 }
@@ -186,6 +188,9 @@ void vehicle_control_update(const remote_command_t *command,
 {
     const remote_command_t *control =
         (remote_command_valid(command) && (command->status == REMOTE_STATUS_OK)) ? command : NULL;
+    if (control == NULL) {
+        s_wait_neutral = true;
+    }
     const uint32_t now = HAL_GetTick();
     const steering_calibration_event_t event = steering_calibration_service_update(
         &s_calibration, neutral(control), encoder_ready(encoder),
@@ -215,12 +220,7 @@ void vehicle_control_update(const remote_command_t *command,
         }
         return;
     }
-    if (control == NULL) {
-        s_steering_mode = STEERING_MODE_OFF;
-        steering_controller_stop(&s_controller);
-        drive_controller_stop(&s_drive);
-        motor_control_apply(NULL);
-    } else if (s_calibration.stage != BOARD_CAL_OFF) {
+    if (s_calibration.stage != BOARD_CAL_OFF) {
         s_steering_mode = STEERING_MODE_OFF;
         steering_controller_stop(&s_controller);
         drive_controller_stop(&s_drive);

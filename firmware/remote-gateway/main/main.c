@@ -10,7 +10,10 @@
 #include "remote_uart.h"
 #include "sdkconfig.h"
 
-enum { STEERING_CHANNEL = 0, THROTTLE_CHANNEL = 1, MODE_CHANNEL = 2, LOG_PERIOD_MS = 200 };
+enum {
+    STEERING_CHANNEL = 0, THROTTLE_CHANNEL = 1, MODE_CHANNEL = 2,
+    LOG_PERIOD_MS = 200, WARNING_PERIOD_MS = 1000
+};
 static const char *const TAG = "gateway";
 
 static const char *source_name(remote_source_t source)
@@ -45,11 +48,33 @@ void app_main(void)
     bool was_valid = false;
     TickType_t wake = xTaskGetTickCount();
     TickType_t last_log = wake;
+    TickType_t last_warning = wake;
+    uint32_t elrs_errors = 0U;
+    uint32_t pwm_errors = 0U;
+    uint32_t tx_errors = 0U;
+    esp_err_t last_error = ESP_OK;
+    const char *last_error_source = "NONE";
+    bool error_pending = false;
+    bool error_logged = false;
     for (;;) {
         elrs_sample_t elrs = {0};
         pwm_rc_sample_t pwm = {0};
-        ESP_ERROR_CHECK(elrs_get_sample(&elrs));
-        ESP_ERROR_CHECK(pwm_rc_get_sample(&pwm));
+        const esp_err_t elrs_error = elrs_get_sample(&elrs);
+        if (elrs_error != ESP_OK) {
+            elrs = (elrs_sample_t){0};
+            ++elrs_errors;
+            last_error = elrs_error;
+            last_error_source = "ELRS";
+            error_pending = true;
+        }
+        const esp_err_t pwm_error = pwm_rc_get_sample(&pwm);
+        if (pwm_error != ESP_OK) {
+            pwm = (pwm_rc_sample_t){0};
+            ++pwm_errors;
+            last_error = pwm_error;
+            last_error_source = "PWM";
+            error_pending = true;
+        }
         const remote_source_t next_source = remote_source_select(
             source, elrs.valid, elrs.valid_since_us, pwm.valid, pwm.valid_since_us);
         const bool source_changed = (next_source != source);
@@ -78,7 +103,13 @@ void app_main(void)
 
         const remote_command_t command = remote_command_from_input(
             input_valid, steering, throttle, drive_mode, sequence);
-        ESP_ERROR_CHECK(remote_uart_send(&command));
+        const esp_err_t tx_error = remote_uart_send(&command);
+        if (tx_error != ESP_OK) {
+            ++tx_errors;
+            last_error = tx_error;
+            last_error_source = "TX";
+            error_pending = true;
+        }
         ++sequence;
 
         const bool valid = (command.status == REMOTE_STATUS_OK);
@@ -102,6 +133,15 @@ void app_main(void)
                          elrs.crc_errors, elrs.range_errors);
             }
             last_log = now;
+        }
+        if (error_pending && (!error_logged ||
+            ((now - last_warning) >= pdMS_TO_TICKS(WARNING_PERIOD_MS)))) {
+            ESP_LOGW(TAG, "I/O last=%s:%s | elrs=%" PRIu32 " pwm=%" PRIu32 " tx=%" PRIu32,
+                     last_error_source, esp_err_to_name(last_error),
+                     elrs_errors, pwm_errors, tx_errors);
+            error_pending = false;
+            error_logged = true;
+            last_warning = now;
         }
         was_valid = valid;
         if (xTaskDelayUntil(&wake, pdMS_TO_TICKS(REMOTE_SEND_PERIOD_MS)) != pdTRUE) {
