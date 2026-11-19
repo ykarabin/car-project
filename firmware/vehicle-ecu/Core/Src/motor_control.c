@@ -20,7 +20,7 @@ typedef struct {
     bool direction_inverted;
 } motor_output_t;
 
-/* Order: left rear, right rear, steering. Pin labels come from CubeMX. */
+/* Motor order: left rear, right rear, steering. */
 static const motor_output_t s_motors[MOTOR_COUNT] = {
     {
         .direction_port = LEFT_MOTOR_DIR_GPIO_Port,
@@ -74,15 +74,14 @@ bool motor_control_init(TIM_HandleTypeDef *pwm_timer)
     }
 
     const uint32_t auto_reload = __HAL_TIM_GET_AUTORELOAD(pwm_timer);
-    /* TIM1 CCR is 16-bit. ARR + 1 must fit for a true 100% duty cycle. */
+    /* ARR + 1 must fit the 16-bit CCR for 100% duty. */
     if ((auto_reload == 0U) || (auto_reload >= UINT16_MAX)) {
         return false;
     }
     s_timer = pwm_timer;
     s_period_ticks = auto_reload + 1U;
 
-    /* RM0440 advanced-timer debug freeze disables outputs as if MOE=0.
-     * Define the off-state as driven LOW, rather than floating GPIO. */
+    /* Drive PWM LOW while the debugger halts TIM1. */
     TIM1->CR2 &= ~(TIM_CR2_OIS1 | TIM_CR2_OIS2 | TIM_CR2_OIS3);
     TIM1->BDTR |= TIM_BDTR_OSSI;
     DBGMCU->APB2FZ |= DBGMCU_APB2FZ_DBG_TIM1_STOP;
@@ -111,9 +110,7 @@ static void apply_outputs(int16_t throttle, int16_t steering,
     }
 
     bool reload_before_enable = false;
-    /* Keep preload transfers disabled while writing the three CCRs. A timer
-     * rollover between CH1 and CH2 must not expose mixed rear PWM commands.
-     * The counter and PWM carrier continue running throughout this batch. */
+    /* Batch CCR writes so both rear channels update together. */
     s_timer->Instance->CR1 |= TIM_CR1_UDIS;
     for (size_t i = 0U; i < MOTOR_COUNT; ++i) {
         const motor_output_t *motor = &s_motors[i];
@@ -133,15 +130,13 @@ static void apply_outputs(int16_t throttle, int16_t steering,
             const bool reverse = (request < 0) != motor->direction_inverted;
             const GPIO_PinState direction = reverse ? GPIO_PIN_SET : GPIO_PIN_RESET;
             if (direction != s_direction[i]) {
-                /* Do not change DIR while this bridge is driving. This is an
-                 * output transition, not controlled mechanical deceleration. */
+                /* Put the bridge to sleep before changing DIR. */
                 HAL_GPIO_WritePin(motor->sleep_port, motor->sleep_pin, GPIO_PIN_RESET);
                 HAL_GPIO_WritePin(motor->direction_port, motor->direction_pin, direction);
                 s_direction[i] = direction;
                 reload_before_enable = true;
             }
         }
-        /* Promote before negation; validated requests are within +/-1000. */
         const uint32_t magnitude = (request < 0) ? (uint32_t)(-request) : (uint32_t)request;
         const uint32_t compare = (magnitude * s_period_ticks) / MOTOR_COMMAND_SCALE;
         __HAL_TIM_SET_COMPARE(s_timer, motor->pwm_channel, compare);
@@ -149,9 +144,7 @@ static void apply_outputs(int16_t throttle, int16_t steering,
     s_timer->Instance->CR1 &= ~TIM_CR1_UDIS;
 
     if (reload_before_enable) {
-        /* CCR writes are preloaded. Latch the new duty before waking a bridge,
-         * so a previous command cannot briefly reappear after a direction
-         * change or reconnection. Normal updates latch at the next PWM period. */
+        /* Latch new duty before waking a bridge to avoid replaying an old command. */
         if (HAL_TIM_GenerateEvent(s_timer, TIM_EVENTSOURCE_UPDATE) != HAL_OK) {
             disable_outputs();
             return;

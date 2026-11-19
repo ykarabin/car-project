@@ -5,7 +5,7 @@
 
 #include "stm32g4xx_hal.h"
 
-/* Reserved in STM32G473XX_FLASH.ld; not included as data in the firmware ELF. */
+/* Calibration pages reserved by the linker. */
 extern const uint8_t __steering_calibration_start__;
 extern const uint8_t __steering_calibration_end__;
 
@@ -21,8 +21,7 @@ typedef struct {
 
 bool steering_calibration_storage_available(void)
 {
-    /* Fixed target geometry. Reject single-bank or swapped-bank operation
-     * instead of erasing an unintended physical page. */
+    /* Require the expected bank layout before accessing reserved pages. */
     return (FLASH_SIZE == UINT32_C(0x80000)) &&
            ((FLASH->OPTR & FLASH_OPTR_DBANK) != 0U) &&
            ((SYSCFG->MEMRMP & SYSCFG_MEMRMP_FB_MODE) == 0U) &&
@@ -37,7 +36,6 @@ static uint32_t slot_address(uint32_t slot)
 
 static void read_words(uint32_t slot, uint32_t words[STEERING_CAL_RECORD_WORDS])
 {
-    /* Local hardware-boundary cast: the linker reserves these Flash pages. */
     const volatile uint32_t *flash = (const volatile uint32_t *)(uintptr_t)slot_address(slot);
     for (size_t i = 0U; i < STEERING_CAL_RECORD_WORDS; ++i) {
         words[i] = flash[i];

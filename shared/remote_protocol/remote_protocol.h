@@ -19,7 +19,7 @@ typedef struct {
     int16_t throttle;       /* -1000 reverse .. 0 neutral .. 1000 forward */
     uint8_t drive_mode;     /* 1, 2 or 3 */
     remote_status_t status;
-    uint8_t sequence;       /* Increment for each transmission; wraps to 0. */
+    uint8_t sequence;       /* Increment on every transmission; wraps to 0. */
 } remote_command_t;
 
 typedef enum {
@@ -37,11 +37,11 @@ typedef struct {
 bool remote_command_valid(const remote_command_t *command);
 uint16_t remote_crc16(const char *data, size_t length);
 
-/* Format: RC,steering,throttle,mode,status,sequence*CRC16\n.
- * Returns the number of bytes to send, or -1 for invalid input/small buffer. */
+/* RC,steering,throttle,mode,status,sequence*CRC16\n.
+ * Returns the byte count, or -1 for invalid input or insufficient space. */
 int remote_command_format(char *line, size_t size, const remote_command_t *command);
 
-/* Feed UART bytes one at a time. Output changes only after a valid whole line. */
+/* Parses one byte at a time; updates the command only after a valid line. */
 void remote_parser_reset(remote_parser_t *parser);
 remote_parse_result_t remote_parser_push(remote_parser_t *parser, uint8_t byte,
                                          remote_command_t *command);

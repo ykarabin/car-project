@@ -26,7 +26,7 @@ void pwm_decoder_capture(pwm_decoder_t *decoder, size_t index, bool rising,
     pwm_channel_t *const channel = &decoder->channels[index];
 
     if (rising) {
-        /* Unsigned subtraction also handles the 32-bit capture counter wrap. */
+        /* Unsigned subtraction handles capture-counter wrap. */
         channel->period_us = (capture_ticks - channel->rise_ticks) / decoder->ticks_per_us;
         channel->period_valid = channel->have_rise && !channel->rise_pending &&
                                 (now_us >= channel->rise_at_us) &&
@@ -47,7 +47,7 @@ void pwm_decoder_capture(pwm_decoder_t *decoder, size_t index, bool rising,
     }
 
     if (!channel->rise_pending) {
-        /* Starting capture halfway through a pulse is normal at startup. */
+        /* Ignore an incomplete first pulse. */
         if (channel->have_rise) {
             invalidate_channel(channel);
             ++channel->errors;
@@ -82,6 +82,7 @@ void pwm_decoder_capture(pwm_decoder_t *decoder, size_t index, bool rising,
     }
 }
 
+/* Scale each side of neutral separately, then apply inversion. */
 static int16_t normalize(uint32_t pulse_us, const pwm_calibration_t *calibration)
 {
     const int32_t pulse = (int32_t)pulse_us;
@@ -98,7 +99,6 @@ static int16_t normalize(uint32_t pulse_us, const pwm_calibration_t *calibration
     } else if (pulse > upper_center) {
         value = ((pulse - upper_center) * 1000) / (calibration->maximum_us - upper_center);
     } else {
-        /* The neutral deadband maps to zero. */
     }
     if (calibration->inverted) {
         value = -value;

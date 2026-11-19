@@ -31,8 +31,7 @@ bool steering_encoder_init(TIM_HandleTypeDef *timer)
     s_timer = timer;
     __HAL_TIM_CLEAR_FLAG(timer, CAPTURE_FLAGS);
 
-    /* Keep CH2's CC2IF pending until the following rising edge. A second
-     * falling edge before consumption raises CC2OF, exposing a mixed pair. */
+    /* Keep CC2 pending until the next rising edge to detect mismatched captures. */
     if (HAL_TIM_IC_Start(timer, TIM_CHANNEL_2) != HAL_OK) {
         s_timer = NULL;
         return false;
@@ -62,12 +61,10 @@ void steering_encoder_irq(void)
     const bool gap = (now - s_last_edge_ms) >= STEERING_ENCODER_TIMEOUT_MS;
     s_last_edge_ms = now;
 
-    /* Reading CCR1 consumes CC1IF. If it is set again, another rising edge
-     * arrived during the snapshot; reject that sample as well. */
+    /* A new CC1 flag after reading CCR1 means the capture changed mid-snapshot. */
     const bool overrun = (((before | after) & OVERRUN_FLAGS) != 0U) ||
                          ((after & TIM_FLAG_CC1) != 0U);
-    /* The first rising edge only establishes the timer reset boundary.
-     * Discard it, and an extra boundary after any lost capture. */
+    /* Discard the first boundary after startup or lost capture. */
     if (!s_synchronized) {
         s_synchronized = !overrun;
         return;
@@ -75,8 +72,7 @@ void steering_encoder_irq(void)
     s_capture.period_ticks = period;
     s_capture.high_ticks = high;
     s_capture.captured_at_ms = now;
-    /* After an idle interval the 16-bit counter may have wrapped, making a
-     * partial period look plausible. Wait for the next complete frame. */
+    /* After a gap, wait for a complete frame to avoid accepting a wrapped period. */
     s_capture.paired = !overrun && !gap && ((before & TIM_FLAG_CC2) != 0U);
     s_capture.has_frame = true;
     if (overrun) {
@@ -86,8 +82,7 @@ void steering_encoder_irq(void)
 
 steering_encoder_sample_t steering_encoder_get(void)
 {
-    /* ISR owns the mailbox; copy all fields before allowing another capture.
-     * Restore the caller's interrupt state, including pre-scheduler calls. */
+    /* Copy the ISR mailbox atomically and restore the prior IRQ state. */
     const uint32_t saved_mask = __get_PRIMASK();
     __disable_irq();
     const encoder_capture_t capture = s_capture;

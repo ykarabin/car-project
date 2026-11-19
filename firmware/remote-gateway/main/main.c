@@ -25,6 +25,7 @@ static const char *source_name(remote_source_t source)
     }
 }
 
+/* Sample RC inputs and send normalized commands periodically. */
 void app_main(void)
 {
     const uint16_t required_channels = (uint16_t)((1U << STEERING_CHANNEL) |
@@ -60,23 +61,23 @@ void app_main(void)
         bool input_valid = false;
         int16_t steering = 0;
         int16_t throttle = 0;
-        int16_t mode_channel = 0;
+        uint8_t drive_mode = 1U;
         if (source == REMOTE_SOURCE_ELRS) {
             input_valid = elrs.valid;
             steering = elrs.normalized[STEERING_CHANNEL];
             throttle = elrs.normalized[THROTTLE_CHANNEL];
-            mode_channel = elrs.normalized[MODE_CHANNEL];
+            drive_mode = remote_drive_mode(elrs.normalized[MODE_CHANNEL]);
         } else if (source == REMOTE_SOURCE_PWM) {
             input_valid = pwm.valid;
             steering = pwm.normalized[0];
             throttle = pwm.normalized[1];
-            mode_channel = (int16_t)(((int32_t)pwm_drive_mode - 2) * 1000);
+            drive_mode = pwm_drive_mode;
         } else {
-            /* NONE produces the protocol's neutral ERROR command. */
+            /* NONE sends a neutral ERROR command. */
         }
 
         const remote_command_t command = remote_command_from_input(
-            input_valid, steering, throttle, mode_channel, sequence);
+            input_valid, steering, throttle, drive_mode, sequence);
         ESP_ERROR_CHECK(remote_uart_send(&command));
         ++sequence;
 
@@ -104,7 +105,7 @@ void app_main(void)
         }
         was_valid = valid;
         if (xTaskDelayUntil(&wake, pdMS_TO_TICKS(REMOTE_SEND_PERIOD_MS)) != pdTRUE) {
-            /* After a long scheduling pause, start a new period. */
+            /* Restart the period after a scheduling stall. */
             vTaskDelay(pdMS_TO_TICKS(REMOTE_SEND_PERIOD_MS));
             wake = xTaskGetTickCount();
         }

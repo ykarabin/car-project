@@ -2,8 +2,7 @@
 
 #include <stddef.h>
 
-/* MagnTek MT6701 Rev.1.8, section 7.6, Figure 16:
- * 4119 clocks/frame, 16 initial HIGH clocks, 8 final LOW clocks.
+/* MT6701 Rev.1.8, section 7.6: PWM frame timing.
  * https://www.magntek.com.cn/upload/pdf/202407/MT6701_Rev.1.8.pdf */
 #define MT6701_FRAME_CLOCKS UINT32_C(4119)
 #define MT6701_START_CLOCKS UINT32_C(16)
@@ -12,8 +11,7 @@
 bool mt6701_pwm_decode(uint32_t period_ticks, uint32_t high_ticks,
                       uint16_t *raw)
 {
-    /* Broad windows include oscillator tolerance and the measured 501.5 Hz.
-     * Check before multiplication to bound all arithmetic to uint32_t. */
+    /* Accept both nominal frame rates with oscillator tolerance. */
     const bool fast_frame = (period_ticks >= 9000U) && (period_ticks <= 11000U);
     const bool slow_frame = (period_ticks >= 18000U) && (period_ticks <= 22000U);
     if ((raw == NULL) || (!fast_frame && !slow_frame) ||

@@ -14,15 +14,17 @@ flowchart LR
     ENC[TIM3 RIGHT / TIM4 steering] --> C
     BTN[Кнопка PC13] --> C
     C --> MON[Перевірка sequence / свіжості / стану]
-    MON --> VC[vehicle_control: PI / P / калібрування]
+    MON --> VC[vehicle_control: режими / PI / P]
     VC --> M[motor_control: PWM / DIR / SLP]
-    VC --> FLASH[Flash: калібрування]
+    VC --> CAL[steering_calibration_service: кнопка / три точки]
+    CAL --> FLASH[Flash: калібрування]
     C --> LQ[Статична Log Queue: 16 повідомлень]
     VC --> LQ
+    CAL --> LQ
     LQ --> LOG[rttLog: priority 1]
     LOG --> RTT[Форматування та RTT]
     C --> WDT[IWDG feed після завершеного циклу]
-    FLT[FLT ISR] -->|SLP LOW, MOE=0, latch| M
+    FLT[FLT ISR + qualifier] -->|confirmed: SLP LOW, MOE=0, latch| M
     M --> HW[Три драйвери та двигуни]
     HW --> ENC
 ```
@@ -30,6 +32,8 @@ flowchart LR
 ESP32 вибирає перше валідне джерело ELRS/PWM і зберігає його, доки
 воно придатне. При втраті джерела надсилає ERROR, повертається до NONE,
 потім повторює вибір. За однакового часу набуття валідності перевага ELRS.
+Обидва джерела передають конструктору UART-команди нормалізовані стіки
+та вже визначений номер режиму 1…3.
 
 ## Задачі та синхронізація
 
@@ -48,8 +52,8 @@ UART ISR передає перевірені команди та помилки 
 короткою секцією зі збереженням PRIMASK. Знімки датчиків також узгоджені
 між ISR та задачею. На ESP32 PWM capture використовує `portMUX`.
 
-Тільки `defaultTask` керує моторами у звичайному режимі. Аварійний FLT ISR
-може негайно вимкнути їх. Логер отримує копії значень та час події,
+Тільки `defaultTask` керує моторами у звичайному режимі. FLT ISR та опитування
+можуть вимкнути їх після підтвердження помилки. Логер отримує копії значень та час події,
 не читає живі контролери й не годує IWDG. Producer Log Queue має wait=0;
 при заповненні нове повідомлення відкидається. Рядкові вказівники в
 повідомленнях посилаються лише на незмінні літерали. Окремий mutex для
@@ -67,7 +71,8 @@ RTOS_THREADS перед запуском планувальника. Черги,
 | `remote_uart` | Приймання байтів, події UART, FIFO, recovery |
 | `remote_command_monitor` | Sequence, timeout, допуск коротких збоїв |
 | `steering_encoder`, `rear_encoders`, `wheel_speed` | Придатність і перетворення вимірювань |
-| `vehicle_control` | Компонування керма/приводу, кнопка, режими калібрування |
+| `vehicle_control` | Компонування керма/приводу, вибір режиму та очікування нейтралі |
+| `steering_calibration_service` | Контекст калібрування, кнопка, стабільність точок і збереження |
 | `drive_controller`, `steering_controller` | PI швидкості та P положення |
 | `motor_control`, `motor_safety` | Моторні виходи, інверсії, FLT та аварійне вимкнення |
 | `steering_calibration`, `steering_calibration_storage` | Геометрія трьох точок і Flash |
@@ -123,7 +128,11 @@ stateDiagram-v2
 - До 40 мс непридатного feedback дозволене лише зменшення поточного PWM,
   без нового напрямку чи накопичення PI-помилки; далі вихід обнуляється.
 - Таймінгова пауза від 50 мс обнуляє вихід регулятора.
-- Будь-який FLT фіксується до reset та вимикає всі драйвери.
+- FLT LOW протягом 2 мс або 3 спадні фронти за будь-яку 1 с на одному
+  драйвері фіксуються до reset та вимикають усі драйвери. Рідкі короткі
+  імпульси допускаються. Короткі імпульси в межах 2 мс після зміни SLP
+  не додаються до ліміту серії, але перевірка тривалого LOW діє завжди.
+  LOW до пробудження забороняє піднімати SLP.
 - IWDG номінально 500 мс підживлюється лише завершеним циклом керування;
   після IWDG reset потрібна нейтраль обох стіків.
 - Сервісне калібрування тримає задні SLP LOW, steering PWM не більше 15%.
@@ -131,4 +140,4 @@ stateDiagram-v2
 
 Параметри містяться в `drive_controller_config.h`,
 `steering_controller_config.h`, `vehicle_input_config.h` та
-`rear_encoder_config.h` у `firmware/vehicle-ecu/Core/Inc`.
+`rear_encoder_config.h` і `motor_config.h` у `firmware/vehicle-ecu/Core/Inc`.

@@ -3,8 +3,7 @@
 
 #include "stm32g4xx_hal.h"
 
-/* Single default task owns controllers, calibration, motor outputs and IWDG.
- * motor_control_init() must succeed before starting this task. */
+/* Run the control loop after motor initialization; this task also feeds IWDG. */
 void vehicle_app_run(UART_HandleTypeDef *uart);
 
 #endif

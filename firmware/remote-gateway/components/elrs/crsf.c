@@ -46,7 +46,7 @@ static bool decode_channels(const uint8_t *payload, uint16_t required_channel_ma
     size_t payload_index = 0U;
     bool valid = true;
 
-    /* Explicit LSB-first unpacking avoids compiler-dependent packed bitfields. */
+    /* CRSF channels are packed as 11-bit values, least-significant bit first. */
     for (size_t channel = 0U; channel < CRSF_CHANNEL_COUNT; ++channel) {
         while (bit_count < 11U) {
             bits |= (uint32_t)payload[payload_index] << bit_count;
@@ -74,7 +74,6 @@ void crsf_parser_reset(crsf_parser_t *parser)
 crsf_result_t crsf_parser_push(crsf_parser_t *parser, uint8_t byte,
                                uint16_t channels[CRSF_CHANNEL_COUNT])
 {
-    /* A complete maximum-size frame is always consumed below. */
     parser->buffer[parser->used] = byte;
     ++parser->used;
 
@@ -104,7 +103,7 @@ crsf_result_t crsf_parser_push(crsf_parser_t *parser, uint8_t byte,
         if (crc8(&parser->buffer[2], length - 1U) !=
             parser->buffer[frame_size - 1U]) {
             ++parser->crc_errors;
-            /* Scan retained bytes for a frame after a corrupted length/CRC. */
+            /* Resynchronize after a corrupt frame. */
             discard_bytes(parser, 1U);
             continue;
         }
@@ -122,7 +121,7 @@ crsf_result_t crsf_parser_push(crsf_parser_t *parser, uint8_t byte,
             }
         }
 
-        /* Future trailing payload fields are covered by CRC and ignored. */
+        /* CRC covers any trailing payload fields. */
         discard_bytes(parser, frame_size);
         if (result != CRSF_RESULT_NONE) {
             return result;

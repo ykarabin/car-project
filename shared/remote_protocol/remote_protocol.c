@@ -37,7 +37,6 @@ int remote_command_format(char *line, size_t size, const remote_command_t *comma
     if ((line == NULL) || !remote_command_valid(command)) {
         return -1;
     }
-    /* int preserves snprintf's byte count / negative-error contract. */
     const int length = snprintf(line, size, "RC,%" PRId32 ",%" PRId32 ",%" PRIu32
                                 ",%" PRIu32 ",%" PRIu32,
                                 (int32_t)command->steering, (int32_t)command->throttle,
@@ -72,8 +71,7 @@ static bool read_number(const char **cursor, char separator,
     int32_t value = 0;
     while ((*p >= '0') && (*p <= '9')) {
         value = value * 10 + (*p - '0');
-        /* Every protocol field is <= 1000 in magnitude. Reject early, before
-         * a long or corrupted number can overflow an integer. */
+        /* Reject oversized fields before arithmetic can overflow. */
         if (value > 1000) {
             return false;
         }
@@ -158,7 +156,7 @@ remote_parse_result_t remote_parser_push(remote_parser_t *parser, uint8_t byte,
             remote_parser_reset(parser);
             return REMOTE_PARSE_NONE;
         }
-        /* Also accept CRLF from a terminal; the sender always uses LF. */
+        /* Accept both LF and CRLF line endings. */
         if (parser->line[parser->used - 1U] == '\r') {
             --parser->used;
         }

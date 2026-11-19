@@ -15,15 +15,14 @@ typedef struct {
     bool valid;
 } remote_uart_event_t;
 
-/* Initialize once in the owner task. Storage is static, no heap allocation. */
+/* Initialize once in the control task; storage is static. */
 bool remote_uart_init(UART_HandleTypeDef *uart);
-/* Nonblocking task-side recovery and ordered event consumption. Overflow
- * preserves the queued prefix, then reports an invalid event at first loss. */
+/* Nonblocking recovery and FIFO consumption. Overflow is reported after queued events. */
 void remote_uart_service(void);
 bool remote_uart_receive(remote_uart_event_t *event);
-/* Cumulative error counts only; caller limits reporting frequency. */
+/* Publish cumulative errors; the caller sets the reporting rate. */
 void remote_uart_log_errors(void);
-/* Record UART error flags before HAL clears them. No register writes. */
+/* Capture error flags before HAL clears them. */
 void remote_uart_capture_irq(UART_HandleTypeDef *uart);
 
 #endif

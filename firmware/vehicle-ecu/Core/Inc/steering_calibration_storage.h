@@ -6,9 +6,8 @@
 bool steering_calibration_storage_available(void);
 bool steering_calibration_storage_load(steering_calibration_t *calibration);
 
-/* Task context, with all motors disabled by the caller. Erases only the
- * inactive reserved page, programs the commit last, then verifies by readback.
- * Never erases the page containing the currently selected valid record. */
+/* Save to the inactive Flash page, commit last and verify; retain the previous record.
+ * The caller must disable all motors first. */
 bool steering_calibration_storage_save(const steering_calibration_t *calibration);
 
 #endif

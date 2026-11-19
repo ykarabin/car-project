@@ -62,7 +62,7 @@ remote_command_state_t remote_command_monitor_state(const remote_command_monitor
         ((now_ms - monitor->good_at_ms) >= REMOTE_COMMAND_TIMEOUT_MS)) {
         return REMOTE_COMMAND_STALE;
     }
-    /* Bad packets never refresh the last usable command or either deadline. */
+    /* Invalid input never refreshes the last OK command or fault deadline. */
     if (monitor->has_good_command &&
         (!monitor->fault_active ||
          ((now_ms - monitor->fault_at_ms) < REMOTE_COMMAND_FAULT_GRACE_MS))) {

@@ -55,6 +55,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/mt6701_pwm.c
     Core/Src/steering_encoder.c
     Core/Src/steering_calibration.c
+    Core/Src/steering_calibration_service.c
     Core/Src/steering_calibration_storage.c
     Core/Src/vehicle_control.c
     Core/Src/steering_controller.c

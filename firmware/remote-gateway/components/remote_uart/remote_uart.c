@@ -39,7 +39,7 @@ esp_err_t remote_uart_send(const remote_command_t *command)
     if (length < 0) {
         return ESP_ERR_INVALID_ARG;
     }
-    /* No TX queue: finish each short line before taking the next RC sample. */
+    /* Finish transmission before taking the next RC sample. */
     if (uart_write_bytes(REMOTE_UART, line, (size_t)length) != length) {
         return ESP_FAIL;
     }

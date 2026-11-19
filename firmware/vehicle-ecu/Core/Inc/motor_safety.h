@@ -8,20 +8,29 @@
 #define MOTOR_FAULT_RIGHT UINT32_C(2)
 #define MOTOR_FAULT_STEERING UINT32_C(4)
 
-/* Boot/fatal path: enable GPIOD, preload SLP LOW and configure PD8/9/10
- * push-pull outputs. Independent of HAL handles, tick and initialized RAM.
- * External pull-downs still determine SLP before firmware starts and at reset. */
+/* First confirmed fault; masks: LEFT=1, RIGHT=2, STEERING=4.
+ * SLP is the output latch; wake_age_ms=UINT32_MAX means never awakened. */
+typedef struct {
+    uint32_t first;
+    uint32_t slp_high;
+    uint32_t flt_low;
+    uint32_t pending;
+    uint32_t at_ms;
+    uint32_t wake_age_ms;
+    uint32_t wake_mask;
+} motor_fault_snapshot_t;
+
+/* Force SLP LOW on boot or fatal error, without relying on initialized RAM or HAL. */
 void motor_safety_early_off(void);
 
-/* EXTI callback dispatches here even before encoder initialization.
- * Any driver FLT latches a global motor inhibit until MCU reset. */
+/* Qualify FLT edges; a confirmed fault inhibits all motors until reset. */
 void motor_safety_fault_irq(uint16_t pin);
-/* Task context: also catches an already LOW input or pending short pulse. */
+/* Poll every 1 ms to qualify LOW levels and pending edges. */
 uint32_t motor_safety_poll(void);
 uint32_t motor_safety_faults(void);
+motor_fault_snapshot_t motor_safety_first_fault(void);
 
-/* Sole path for raising SLP: checks the latch, FLT levels and pending EXTI
- * with IRQs masked; rechecks after the write. False leaves all drivers asleep. */
+/* Only wake path: raw FLT LOW blocks wake; latched faults require reset. */
 bool motor_safety_wake(bool rear_enabled, bool steering_enabled);
 
 #endif

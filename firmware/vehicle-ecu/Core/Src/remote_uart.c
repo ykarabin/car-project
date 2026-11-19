@@ -63,8 +63,7 @@ void remote_uart_log_errors(void)
 static void publish_from_isr(const remote_uart_event_t *received)
 {
     BaseType_t wake = pdFALSE;
-    /* FIFO preserves valid/error order. After overflow, reject the entire
-     * missing interval until the task has consumed the queued prefix. */
+    /* After overflow, reject new events until the queued prefix is consumed. */
     if (s_overflow || (xQueueSendFromISR(s_queue, received, &wake) != pdTRUE)) {
         if (!s_overflow) {
             s_overflow_at_ms = received->received_at_ms;
@@ -87,8 +86,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *uart)
     remote_uart_event_t received = {.received_at_ms = HAL_GetTick()};
     if ((s_parser.used != 0U || s_parser.discarding) &&
         (received.received_at_ms - s_last_byte_ms >= REMOTE_SEND_PERIOD_MS)) {
-        /* A whole line takes less than 3 ms. Drop a partial line after a long
-         * gap, rather than give an old command a new completion timestamp. */
+        /* Discard partial lines after a long gap so stale commands cannot appear fresh. */
         ++s_rx_diagnostics.events;
         ++s_rx_diagnostics.partial_gap;
         remote_parser_reset(&s_parser);
@@ -119,7 +117,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *uart)
 
     ++s_rx_diagnostics.events;
     ++s_rx_diagnostics.hal_errors;
-    /* Discard partial input after framing/noise/overrun errors. */
+    /* Discard partial input after a UART error. */
     (void)HAL_UART_AbortReceive(uart);
     remote_parser_reset(&s_parser);
     const remote_uart_event_t invalid = {.received_at_ms = HAL_GetTick()};
@@ -159,8 +157,7 @@ bool remote_uart_init(UART_HandleTypeDef *uart)
 
 void remote_uart_service(void)
 {
-    /* ISR normally rearms RX. The task only recovers a READY receiver; mask
-     * IRQs so HAL's state check and rearm cannot race the UART callback. */
+    /* Recover stopped RX with IRQs masked to avoid racing the UART ISR. */
     const uint32_t saved_mask = __get_PRIMASK();
     __disable_irq();
     if ((s_uart != NULL) && (s_uart->RxState == HAL_UART_STATE_READY)) {

@@ -22,9 +22,8 @@ typedef enum {
     BOARD_NOTICE_SAVED
 } board_notice_t;
 
-/* Single default task owns PC13 input and PF2 LED. GPIO is configured by
- * CubeMX. Poll without blocking; short event on release, long once at 3 s.
- * A button held at startup must first be released before events are armed. */
+/* Nonblocking button/LED handling in the control task.
+ * Short press fires on release; a button held at boot must first be released. */
 void board_controls_init(uint32_t now_ms);
 board_button_event_t board_controls_poll(uint32_t now_ms);
 void board_controls_set_stage(board_cal_stage_t stage, uint32_t now_ms);

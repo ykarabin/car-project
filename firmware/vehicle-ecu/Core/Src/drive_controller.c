@@ -42,7 +42,7 @@ void drive_controller_stop(drive_controller_t *controller)
 
 static bool motion_initialized(const drive_controller_t *controller)
 {
-    /* IDLE and NEUTRAL_SETTLE require a zero-output timing seed before drive. */
+    /* Running and reversal phases already have control timing. */
     return (controller->motion == DRIVE_MOTION_RUNNING) ||
            (controller->motion == DRIVE_MOTION_REVERSING) ||
            (controller->motion == DRIVE_MOTION_REVERSE_SETTLE);
@@ -67,14 +67,6 @@ static void cancel_settle(drive_controller_t *controller)
     } else if (controller->motion == DRIVE_MOTION_NEUTRAL_SETTLE) {
         controller->motion = DRIVE_MOTION_IDLE;
     }
-}
-
-/* Every other result follows usable feedback since the last stop/error.
- * In particular FEEDBACK_HOLD preserves that history; timestamp zero is valid. */
-static bool feedback_known(const drive_controller_t *controller)
-{
-    return (controller->state != DRIVE_CONTROL_DISABLED) &&
-           (controller->state != DRIVE_CONTROL_FEEDBACK_ERROR);
 }
 
 static bool feedback_ready(const wheel_speed_sample_t *right)
@@ -136,8 +128,7 @@ static int32_t requested_speed(const remote_command_t *command)
                     (1000 - VEHICLE_STICK_DEADBAND));
 }
 
-/* RC-style reverse while moving: one pull brakes, release, next pull drives.
- * A normal settled neutral stop may grant permission separately below. */
+/* First reverse pull brakes; neutral and a second pull permit reverse. */
 static bool update_reverse_gate(drive_controller_t *controller, int16_t throttle)
 {
     if (throttle > VEHICLE_STICK_DEADBAND) {
@@ -160,9 +151,7 @@ static bool update_reverse_gate(drive_controller_t *controller, int16_t throttle
 
 static void update_neutral_stop(drive_controller_t *controller, uint32_t now_ms)
 {
-    /* Called only at PWM=0 with a neutral command and usable RIGHT feedback.
-     * Forward-drive history is cleared by a reverse pull or a prolonged fault;
-     * waiting in neutral at startup cannot replace the brake gesture. */
+    /* A settled neutral stop grants reverse only after forward drive. */
     if ((controller->reverse_stage != DRIVE_REVERSE_FORWARD_SEEN) ||
         (controller->measured_mm_s < -DRIVE_CONTROL_REVERSE_STOP_MM_S) ||
         (controller->measured_mm_s > DRIVE_CONTROL_REVERSE_STOP_MM_S)) {
@@ -185,7 +174,7 @@ static int32_t regulate(drive_controller_t *controller, int32_t target,
 {
     const int32_t feed_forward = target * DRIVE_CONTROL_FEED_FORWARD_PWM / DRIVE_CONTROL_NOMINAL_MM_S;
     const int32_t proportional = error * DRIVE_CONTROL_KP / 1000;
-    /* Keep fractional PWM in the integrator; small errors must accumulate. */
+    /* Preserve fractional PWM so small errors accumulate. */
     const int64_t increment = (int64_t)error * DRIVE_CONTROL_KI * elapsed_ms / 1000;
     const int64_t candidate = (int64_t)controller->integral_milli_pwm + increment;
     const int32_t integral_limit = DRIVE_CONTROL_PWM_MAX * 1000;
@@ -198,8 +187,7 @@ static int32_t regulate(drive_controller_t *controller, int32_t target,
         integral = (int32_t)candidate;
     }
     const int32_t raw = feed_forward + proportional + controller->integral_milli_pwm / 1000;
-    /* Conditional integration accounts for amplitude and both slew limits.
-     * Allow integration only when it does not push farther into a limit. */
+    /* Anti-windup: integrate only when the error does not push farther into a limit. */
     if (!(((error > 0) && (raw >= rise_limit)) || ((error < 0) && (raw <= fall_limit)))) {
         controller->integral_milli_pwm = integral;
     }
@@ -211,7 +199,7 @@ static int16_t handle_feedback_loss(drive_controller_t *controller,
                                     const remote_command_t *command, uint32_t now_ms)
 {
     const uint32_t elapsed = now_ms - controller->updated_at_ms;
-    if (feedback_known(controller) &&
+    if (controller->feedback_seen &&
         ((now_ms - controller->feedback_at_ms) < DRIVE_CONTROL_FEEDBACK_GRACE_MS) &&
         (elapsed < DRIVE_CONTROL_MAX_GAP_MS)) {
         const bool braking = update_reverse_gate(controller, command->throttle);
@@ -220,11 +208,12 @@ static int16_t handle_feedback_loss(drive_controller_t *controller,
             controller->state = DRIVE_CONTROL_FEEDBACK_HOLD;
             return 0;
         }
-        /* No PI integration, acceleration or new direction on stale feedback. */
+        /* Stale feedback permits deceleration only. */
         return ramp_to_zero(controller, DRIVE_CONTROL_FEEDBACK_HOLD, now_ms, elapsed,
                             braking ? DRIVE_CONTROL_PWM_BRAKE_STEP : DRIVE_CONTROL_PWM_FALL_STEP);
     }
     brake(controller, DRIVE_CONTROL_FEEDBACK_ERROR, now_ms);
+    controller->feedback_seen = false;
     controller->motion = DRIVE_MOTION_IDLE;
     controller->reverse_stage = DRIVE_REVERSE_BRAKE_REQUIRED;
     controller->measured_mm_s = 0;
@@ -232,7 +221,7 @@ static int16_t handle_feedback_loss(drive_controller_t *controller,
     return 0;
 }
 
-/* Advance the mechanical stop interval only after PWM is zero. */
+/* Require zero PWM and a settled wheel before reversing. */
 static bool settle_reversal(drive_controller_t *controller, uint32_t now_ms,
                             uint32_t elapsed)
 {
@@ -243,7 +232,6 @@ static bool settle_reversal(drive_controller_t *controller, uint32_t now_ms,
                                 DRIVE_CONTROL_PWM_BRAKE_STEP);
             return false;
         }
-        /* Start the settle interval only after the applied PWM reached zero. */
         if ((controller->measured_mm_s >= -DRIVE_CONTROL_REVERSE_STOP_MM_S) &&
             (controller->measured_mm_s <= DRIVE_CONTROL_REVERSE_STOP_MM_S)) {
             if (controller->motion != DRIVE_MOTION_REVERSE_SETTLE) {
@@ -295,14 +283,13 @@ static int16_t update_pwm(drive_controller_t *controller, int32_t direction,
     return controller->pwm;
 }
 
-/* Usable feedback: RC brake gesture, neutral/initialization, direction gate. */
+/* Apply brake gestures and direction checks before updating PWM. */
 static int16_t update_motion(drive_controller_t *controller,
                               const remote_command_t *command, int32_t previous_target,
                               uint32_t now_ms, uint32_t elapsed)
 {
     if (update_reverse_gate(controller, command->throttle)) {
-        /* Ramp to PWM=0 with enabled bridges for active braking.
-         * Holding this pull cannot grant permission to drive backwards. */
+        /* Keep bridges enabled while braking; holding reverse never grants permission. */
         const bool initialized = motion_initialized(controller);
         controller->motion = DRIVE_MOTION_RUNNING;
         if (!initialized) {
@@ -337,8 +324,7 @@ static int16_t update_motion(drive_controller_t *controller,
     const int32_t direction = (controller->target_mm_s < 0) ? -1 : 1;
     const bool opposite_motion = direction * controller->measured_mm_s <
                                  -DRIVE_CONTROL_REVERSE_STOP_MM_S;
-    /* Cancel a requested reversal only if the operator returns to the old
-     * direction. A stop caused by actual opposite motion stays latched. */
+    /* Returning to the old command direction can cancel a reversal; actual opposite motion cannot. */
     if (motion_reversing(controller) && (direction == controller->direction) &&
         (direction * previous_target < 0) && !opposite_motion) {
         controller->motion = DRIVE_MOTION_RUNNING;
@@ -367,7 +353,6 @@ int16_t drive_controller_update(drive_controller_t *controller,
         return 0;
     }
     const int32_t previous_target = controller->target_mm_s;
-    controller->drive_mode = command->drive_mode;
     controller->target_mm_s = requested_speed(command);
     controller->full_power_requested = (command->drive_mode == 3U) &&
         ((command->throttle >= DRIVE_CONTROL_FULL_STICK) ||
@@ -377,6 +362,7 @@ int16_t drive_controller_update(drive_controller_t *controller,
     }
 
     controller->feedback_at_ms = now_ms;
+    controller->feedback_seen = true;
     controller->measured_mm_s = right->speed_mm_s;
     controller->error_mm_s = controller->target_mm_s - controller->measured_mm_s;
     const uint32_t elapsed = now_ms - controller->updated_at_ms;

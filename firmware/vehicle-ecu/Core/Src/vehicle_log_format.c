@@ -108,6 +108,16 @@ void vehicle_log_format(uint32_t captured_at_ms, const vehicle_log_message_t *me
     case VEHICLE_LOG_REMOTE:
         debug_console_printf_at(captured_at_ms, "EVENT RC %s", message->data.text);
         break;
+    case VEHICLE_LOG_MOTOR_FAULT_FIRST: {
+        const motor_fault_snapshot_t *first = &message->data.motor_first;
+        debug_console_printf_at(captured_at_ms,
+            "ERROR MOTOR_FLT_FIRST | first=0x%02" PRIX32 " slp=0x%02" PRIX32
+            " low=0x%02" PRIX32 " pending=0x%02" PRIX32
+            " at=%" PRIu32 "ms wake_age=%" PRIu32 "ms wake=0x%02" PRIX32,
+            first->first, first->slp_high, first->flt_low, first->pending,
+            first->at_ms, first->wake_age_ms, first->wake_mask);
+        break;
+    }
     case VEHICLE_LOG_MOTOR_FAULT: {
         const uint32_t faults = message->data.motor_faults;
         debug_console_printf_at(captured_at_ms, "ERROR MOTOR_FLT LATCHED | mask=0x%02" PRIX32

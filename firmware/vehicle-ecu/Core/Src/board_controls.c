@@ -49,6 +49,7 @@ void board_controls_signal(board_notice_t notice, uint32_t now_ms)
     s_notice_at = now_ms;
 }
 
+/* Notices temporarily override the calibration-stage blink pattern. */
 static void update_led(uint32_t now_ms)
 {
     const uint32_t notice_age = now_ms - s_notice_at;

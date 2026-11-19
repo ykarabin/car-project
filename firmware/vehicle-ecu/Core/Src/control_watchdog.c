@@ -2,8 +2,7 @@
 
 #include "stm32g4xx_hal.h"
 
-/* RM0440 IWDG: enable LSI/watchdog, unlock register writes, then reload.
- * Direct access keeps ownership local without changing vendor HAL sources. */
+/* IWDG register keys and prescaler (RM0440). */
 #define IWDG_START_KEY UINT32_C(0xCCCC)
 #define IWDG_WRITE_KEY UINT32_C(0x5555)
 #define IWDG_RELOAD_KEY UINT32_C(0xAAAA)
@@ -33,9 +32,7 @@ bool control_watchdog_start(void)
     s_started = false;
     s_reset_flags = RCC->CSR;
     RCC->CSR |= RCC_CSR_RMVF;
-    /* Debug halt is handled by TIM1's defined LOW off-state. Freeze IWDG
-     * while halted so stepping does not cause a reboot. Fault loops still
-     * execute on the CPU, so the watchdog remains active in those loops. */
+    /* Freeze IWDG during debugger halt; fault loops still trigger a reset. */
     DBGMCU->APB1FZR1 |= DBGMCU_APB1FZR1_DBG_IWDG_STOP;
     IWDG->KR = IWDG_START_KEY;
     IWDG->KR = IWDG_WRITE_KEY;

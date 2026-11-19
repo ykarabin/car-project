@@ -3,8 +3,7 @@
 
 #include <stdint.h>
 
-/* The magnitude of INT32_MIN is 2147483648, so the result is unsigned.
- * Add one before negation to keep every signed intermediate representable. */
+/* Handle INT32_MIN without signed overflow. */
 static inline uint32_t int32_magnitude(int32_t value)
 {
     uint32_t result;

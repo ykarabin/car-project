@@ -54,7 +54,6 @@ bool steering_calibration_position(const steering_calibration_t *calibration,
     if (right_delta < 0) {
         value = -value;
     }
-    /* Valid 12-bit angle deltas have magnitudes <= 2048, fitting int32_t. */
     int32_t span = (value < 0) ?
                   (int32_t)int32_magnitude(steering_calibration_delta(calibration->center, calibration->left)) :
                   (int32_t)int32_magnitude(right_delta);
@@ -79,7 +78,6 @@ bool steering_calibration_target(const steering_calibration_t *calibration,
     const int32_t right = steering_calibration_delta(calibration->center, calibration->right);
     const int32_t side = (position < 0) ?
                          steering_calibration_delta(calibration->center, calibration->left) : right;
-    /* Valid 12-bit angle delta: magnitude <= 2048 fits signed coordinates. */
     const int32_t span = working_span((int32_t)int32_magnitude(side));
     int32_t offset = ((int32_t)position * span) / 1000;
     if (right < 0) {

@@ -3,10 +3,8 @@
 
 #include <stdint.h>
 
-/* Task context, after HAL clock initialization. Combines the existing 1 ms
- * HAL tick with TIM6's 1 MHz, ARR=999 counter. No timer reconfiguration.
- * Unsigned microseconds wrap naturally about every 71.6 minutes.
- * The HAL tick must be running; interrupt masking must remain below 1 ms. */
+/* Task-only microsecond clock from HAL tick and TIM6; wraps as uint32_t.
+ * HAL tick must run and IRQ masking must stay below 1 ms. */
 uint32_t timebase_us_now(void);
 
 #endif

@@ -6,6 +6,7 @@
 
 #include "board_controls.h"
 #include "steering_calibration.h"
+#include "motor_safety.h"
 
 #define VEHICLE_LOG_QUEUE_LENGTH 16U
 #define VEHICLE_LOG_STACK_WORDS 1024U
@@ -53,6 +54,7 @@ typedef enum {
     VEHICLE_LOG_STEER_RELEASE,
     VEHICLE_LOG_REMOTE,
     VEHICLE_LOG_MOTOR_FAULT,
+    VEHICLE_LOG_MOTOR_FAULT_FIRST,
     VEHICLE_LOG_STATUS,
     VEHICLE_LOG_FEEDBACK,
     VEHICLE_LOG_UART
@@ -64,6 +66,7 @@ typedef struct {
         const char *text;
         uint32_t reset_flags;
         uint32_t motor_faults;
+        motor_fault_snapshot_t motor_first;
         uint16_t raw;
         steering_calibration_t calibration;
         struct {
@@ -81,17 +84,14 @@ typedef struct {
     } data;
 } vehicle_log_message_t;
 
-/* Start once after osKernelInitialize, before osKernelStart. Static queue,
- * stack and TCB; a lower-priority task is the only RTT/printf owner. */
+/* Start the static logger task before the scheduler; it owns RTT/printf. */
 bool vehicle_log_start(void);
-/* Control-task producer only, never ISR. Copies values with capture time,
- * wait=0. A full queue drops the new log record without affecting control.
- * Every string pointer MUST refer to immutable static storage (state-name
- * literals or literal messages), never stack, mutable state or UART data. */
+/* Nonblocking control-task producer; full queues drop the new record.
+ * String pointers must reference immutable static storage. */
 bool vehicle_log_publish(const vehicle_log_message_t *message);
 void vehicle_log_text(const char *static_text);
 
-/* Consumer-side renderer: no live controller/encoder reads or motor access. */
+/* Format a captured snapshot in the logger task. */
 void vehicle_log_format(uint32_t captured_at_ms, const vehicle_log_message_t *message);
 
 #endif

@@ -27,8 +27,7 @@ bool wheel_speed_init(wheel_speed_t *speed, const wheel_speed_config_t *config,
         return false;
     }
     *speed = (wheel_speed_t){0};
-    /* MT6826S supports up to 4096 PPR, decoded x4. The bound also keeps
-     * configuration validation and later 64-bit products within range. */
+    /* Limit encoder resolution to keep count and speed calculations within range. */
     if ((config == NULL) ||
         ((config->counter_bits != 16U) && (config->counter_bits != 32U)) ||
         (config->counts_per_motor_rev == 0U) ||
@@ -54,8 +53,6 @@ bool wheel_speed_init(wheel_speed_t *speed, const wheel_speed_config_t *config,
 static void clear_velocity(wheel_speed_sample_t *sample)
 {
     sample->delta_counts = 0;
-    sample->motor_rpm_milli = 0;
-    sample->wheel_rpm_milli = 0;
     sample->speed_mm_s = 0;
 }
 
@@ -94,8 +91,6 @@ void wheel_speed_update(wheel_speed_t *speed, uint32_t counter, uint32_t now_us)
     const int64_t motor_denominator = (int64_t)speed->config.counts_per_motor_rev * elapsed;
     const int64_t wheel_denominator = motor_denominator * REAR_ENCODER_GEAR_RATIO;
     speed->sample.delta_counts = delta;
-    speed->sample.motor_rpm_milli = (int32_t)(((int64_t)delta * INT64_C(60000000000)) / motor_denominator);
-    speed->sample.wheel_rpm_milli = (int32_t)(((int64_t)delta * INT64_C(60000000000)) / wheel_denominator);
     speed->sample.speed_mm_s = (int32_t)(((int64_t)delta * REAR_ENCODER_WHEEL_CIRCUMFERENCE_UM * 1000) /
                                         wheel_denominator);
     speed->sample.state = WHEEL_SPEED_OK;

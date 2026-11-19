@@ -39,6 +39,7 @@ static void invalidate_sample(elrs_sample_t *sample)
     (void)memset(sample->normalized, 0, sizeof(sample->normalized));
 }
 
+/* Decode buffered CRSF frames and publish the latest RC sample. */
 static void receiver_task(void *argument)
 {
     (void)argument;
@@ -53,7 +54,7 @@ static void receiver_task(void *argument)
         bool uart_error = false;
 
         if (xQueueReceive(s_uart_queue, &event, pdMS_TO_TICKS(ELRS_POLL_MS)) == pdTRUE) {
-            /* Inspect all pending errors before trusting buffered channel data. */
+            /* Check pending UART errors before decoding buffered data. */
             for (size_t count = 0U; count < ELRS_UART_QUEUE_SIZE; ++count) {
                 if ((event.type == UART_FIFO_OVF) || (event.type == UART_BUFFER_FULL) ||
                     (event.type == UART_FRAME_ERR) || (event.type == UART_PARITY_ERR) ||
@@ -68,7 +69,7 @@ static void receiver_task(void *argument)
         }
 
         const int64_t now_us = esp_timer_get_time();
-        /* Flush a backlog after a scheduling stall instead of re-dating old RC. */
+        /* Discard buffered commands after a scheduling stall. */
         if (uart_error || ((now_us - previous_poll_us) >= ELRS_MAX_POLL_GAP_US)) {
             ESP_ERROR_CHECK(uart_flush_input(ELRS_UART));
             (void)xQueueReset(s_uart_queue);
@@ -82,7 +83,7 @@ static void receiver_task(void *argument)
                 crsf_parser_reset(&parser);
             }
 
-            /* Bound the work to the bytes present at the start of this pass. */
+            /* Process only the bytes buffered at the start of this pass. */
             while (buffered > 0U) {
                 size_t to_read = buffered;
                 if (to_read > sizeof(buffer)) {
@@ -105,7 +106,7 @@ static void receiver_task(void *argument)
                         for (size_t channel = 0U; channel < ELRS_CHANNEL_COUNT; ++channel) {
                             sample.normalized[channel] = crsf_normalize(channels[channel]);
                         }
-                        /* Conservative age includes time spent in the UART buffer. */
+                        /* Include UART buffering time in the sample age. */
                         sample.received_at_us = previous_poll_us;
                         if (!sample.valid) {
                             sample.valid_since_us = sample.received_at_us;
@@ -115,7 +116,7 @@ static void receiver_task(void *argument)
                         (void)memcpy(sample.rejected_raw, channels, sizeof(sample.rejected_raw));
                         invalidate_sample(&sample);
                     } else {
-                        /* Other frames and corrupt frames do not refresh RC freshness. */
+                        /* Only valid channel frames refresh the command. */
                     }
                 }
                 last_data_us = now_us;

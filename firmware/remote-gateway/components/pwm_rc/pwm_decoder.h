@@ -42,9 +42,7 @@ typedef struct {
 
 bool pwm_calibration_valid(const pwm_calibration_t *calibration);
 
-/* Zero-initialize and set nonzero ticks_per_us before feeding edges.
- * Caller serializes access between capture callbacks and snapshot copies.
- */
+/* Zero-initialize and set ticks_per_us; serialize capture and snapshot access. */
 void pwm_decoder_capture(pwm_decoder_t *decoder, size_t channel, bool rising,
                          uint32_t capture_ticks, int64_t now_us);
 void pwm_decoder_sample(const pwm_decoder_t *decoder,

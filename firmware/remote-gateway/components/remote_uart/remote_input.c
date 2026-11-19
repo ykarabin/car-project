@@ -32,21 +32,22 @@ uint8_t remote_mode_cycle_update(remote_mode_cycle_t *state, bool valid,
         state->level = level;
         state->mode = (uint8_t)((state->mode % 3U) + 1U);
     } else {
-        /* Wait for the changed PWM level to remain stable. */
+        /* Wait for a stable level change. */
     }
     return state->mode;
 }
 
 remote_command_t remote_command_from_input(bool valid, int16_t steering, int16_t throttle,
-                                           int16_t mode, uint8_t sequence)
+                                           uint8_t drive_mode, uint8_t sequence)
 {
     remote_command_t command = {.drive_mode = 1U, .status = REMOTE_STATUS_ERROR,
                                  .sequence = sequence};
     if (valid && (steering >= -1000) && (steering <= 1000) &&
-        (throttle >= -1000) && (throttle <= 1000) && (mode >= -1000) && (mode <= 1000)) {
+        (throttle >= -1000) && (throttle <= 1000) &&
+        (drive_mode >= 1U) && (drive_mode <= 3U)) {
         command.steering = steering;
         command.throttle = throttle;
-        command.drive_mode = remote_drive_mode(mode);
+        command.drive_mode = drive_mode;
         command.status = REMOTE_STATUS_OK;
     }
     return command;

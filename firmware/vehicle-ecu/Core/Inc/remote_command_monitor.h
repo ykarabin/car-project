@@ -7,7 +7,7 @@
 
 #include "remote_protocol.h"
 
-/* Commands at or beyond this age are not applied to motor outputs. */
+/* Maximum age of an applied command. */
 #define REMOTE_COMMAND_TIMEOUT_MS UINT32_C(100)
 #define REMOTE_COMMAND_FAULT_GRACE_MS UINT32_C(60)
 
@@ -20,9 +20,9 @@ typedef enum {
 } remote_command_state_t;
 
 typedef struct {
-    /* Latest valid frame for sequence/diagnostics; may report radio loss. */
+    /* Latest valid frame, including remote ERROR status. */
     remote_command_t command;
-    /* Only a CRC/range-checked OK frame can update this applied command. */
+    /* Last verified OK command used during short faults. */
     remote_command_t good_command;
     uint32_t received_at_ms;
     uint32_t good_at_ms;
@@ -38,6 +38,7 @@ typedef struct {
 
 void remote_command_monitor_init(remote_command_monitor_t *monitor);
 void remote_command_monitor_reject(remote_command_monitor_t *monitor, uint32_t received_at_ms);
+/* Reject duplicate frames; only OK frames replace the applied command. */
 bool remote_command_monitor_accept(remote_command_monitor_t *monitor,
                                    const remote_command_t *command,
                                    uint32_t received_at_ms);

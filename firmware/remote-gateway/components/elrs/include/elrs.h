@@ -10,8 +10,8 @@
 
 typedef struct {
     bool valid;
-    int64_t received_at_us; /* Conservative timestamp from esp_timer_get_time(). */
-    int64_t valid_since_us; /* Start of the current uninterrupted valid stream. */
+    int64_t received_at_us; /* Conservative reception time (esp_timer, us). */
+    int64_t valid_since_us; /* Start of the current valid stream. */
     uint16_t raw[ELRS_CHANNEL_COUNT];
     int16_t normalized[ELRS_CHANNEL_COUNT];
     uint32_t rc_frames;
@@ -19,21 +19,15 @@ typedef struct {
     uint32_t frame_errors;
     uint32_t range_errors;
     uint32_t uart_errors;
-    uint16_t rejected_raw[ELRS_CHANNEL_COUNT]; /* Last range error, diagnostic only. */
+    uint16_t rejected_raw[ELRS_CHANNEL_COUNT]; /* Last rejected channels, for diagnostics. */
 } elrs_sample_t;
 
-/* Call once from app_main. Owns UART1 and starts the receiver task.
- * Select channels required by the application with a nonzero mask (bit 0=CH1).
- * Their range and freshness determine sample.valid. All 16 raw channels are
- * decoded for diagnostics. Unselected channel ranges do not invalidate input.
- */
+/* Start UART1 reception once; mask bit 0 selects CH1.
+ * Only required channels determine validity. */
 esp_err_t elrs_start(uint16_t required_channel_mask);
 
-/* Thread-safe snapshot. Invalid snapshots have zeroed channels and timestamp.
- * Channel indices are zero-based. Normalized values are in [-1000, 1000].
- * A consumer must check valid before using channels. Recheck freshness if the
- * snapshot is retained, using received_at_us and the configured timeout.
- */
+/* Thread-safe snapshot with normalized channels in +/-1000.
+ * Check valid before use; invalid samples have zeroed channels and timestamps. */
 esp_err_t elrs_get_sample(elrs_sample_t *sample);
 
 #endif

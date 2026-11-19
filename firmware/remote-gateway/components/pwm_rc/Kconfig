@@ -40,6 +40,29 @@ menu "Remote Gateway PWM RC"
         range 0 100
         default 20
 
+    config PWM_RC_THROTTLE_MIN_US
+        int "CH2 throttle calibration minimum pulse (us)"
+        range 800 2200
+        default PWM_RC_MIN_US
+        help
+            Measured CH2 low endpoint, mapped to -1000 before inversion.
+            Overrides the common minimum for the throttle channel only.
+
+    config PWM_RC_THROTTLE_CENTER_US
+        int "CH2 throttle calibration neutral pulse (us)"
+        range 800 2200
+        default PWM_RC_CENTER_US
+        help
+            Measured CH2 neutral pulse. The common deadband applies here.
+
+    config PWM_RC_THROTTLE_MAX_US
+        int "CH2 throttle calibration maximum pulse (us)"
+        range 800 2200
+        default PWM_RC_MAX_US
+        help
+            Measured CH2 high endpoint, mapped to +1000 before inversion.
+            Overrides the common maximum for the throttle channel only.
+
     config PWM_RC_STEERING_INVERTED
         bool "Invert PWM steering"
         default n

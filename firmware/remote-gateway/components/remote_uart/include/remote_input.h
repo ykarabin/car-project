@@ -13,13 +13,12 @@ typedef struct {
 } remote_mode_cycle_t;
 
 uint8_t remote_drive_mode(int16_t channel);
-/* Zero-initialize. First valid level sets a baseline, starting in mode 1.
- * Each stable level change advances 1 -> 2 -> 3 -> 1. Signal loss keeps the
- * selected mode and clears the level baseline, avoiding a reconnect click.
- */
+/* Zero-initialize. Stable level changes cycle 1 -> 2 -> 3.
+ * Signal loss clears the level baseline but keeps the selected mode. */
 uint8_t remote_mode_cycle_update(remote_mode_cycle_t *state, bool valid,
                                  int16_t channel, int64_t received_at_us);
+/* Build a command from normalized sticks and a decoded mode 1..3. */
 remote_command_t remote_command_from_input(bool valid, int16_t steering, int16_t throttle,
-                                           int16_t mode, uint8_t sequence);
+                                           uint8_t drive_mode, uint8_t sequence);
 
 #endif

@@ -23,10 +23,10 @@ typedef struct {
     uint32_t range_errors;
 } crsf_parser_t;
 
-/* Zero-initialize and set a nonzero required_channel_mask before first use.
- * Bit 0 selects CH1. Reset preserves the mask and diagnostic counters.
- */
+/* Zero-initialize; required_channel_mask uses bit 0 for CH1.
+ * Reset preserves the mask and counters. */
 void crsf_parser_reset(crsf_parser_t *parser);
+/* Return channels only after a complete, CRC-checked frame. */
 crsf_result_t crsf_parser_push(crsf_parser_t *parser, uint8_t byte,
                                uint16_t channels[CRSF_CHANNEL_COUNT]);
 int16_t crsf_normalize(uint16_t raw);

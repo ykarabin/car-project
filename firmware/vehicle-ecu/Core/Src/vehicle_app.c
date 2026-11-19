@@ -44,7 +44,7 @@ void vehicle_app_run(UART_HandleTypeDef *uart)
     for (;;) {
         remote_uart_service();
         remote_uart_event_t received;
-        /* Bounded drain: queued events plus one explicit overflow event. */
+        /* Drain the queue plus one possible overflow event. */
         for (uint32_t i = 0U; i <= REMOTE_UART_QUEUE_LENGTH; ++i) {
             if (!remote_uart_receive(&received)) {
                 break;
@@ -66,6 +66,12 @@ void vehicle_app_run(UART_HandleTypeDef *uart)
         vehicle_control_update(control, &encoder, &rear);
         const uint32_t latched_faults = motor_safety_faults();
         if (latched_faults != logged_motor_faults) {
+            if (logged_motor_faults == 0U) {
+                (void)vehicle_log_publish(&(const vehicle_log_message_t){
+                    .kind = VEHICLE_LOG_MOTOR_FAULT_FIRST,
+                    .data.motor_first = motor_safety_first_fault()
+                });
+            }
             logged_motor_faults = latched_faults;
             (void)vehicle_log_publish(&(const vehicle_log_message_t){
                 .kind = VEHICLE_LOG_MOTOR_FAULT, .data.motor_faults = latched_faults

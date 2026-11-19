@@ -49,7 +49,6 @@ bool steering_controller_init(steering_controller_t *controller,
     controller->left_counts = coordinate(controller, left);
     controller->right_counts = coordinate(controller, right);
     controller->target_raw = calibration->center;
-    controller->reference_raw = calibration->center;
     controller->calibrated = true;
     return true;
 }
@@ -80,7 +79,7 @@ int16_t steering_controller_update(steering_controller_t *controller, int16_t re
             steering_controller_stop(controller);
             return 0;
         }
-        /* Reduce the existing output only; never steer using an invented angle. */
+        /* Reduce PWM during feedback loss. */
         if (elapsed >= STEERING_CONTROL_PERIOD_MS) {
             const int32_t step = (int32_t)((STEERING_CONTROL_PWM_STEP * elapsed) /
                                           STEERING_CONTROL_PERIOD_MS);
@@ -101,7 +100,6 @@ int16_t steering_controller_update(steering_controller_t *controller, int16_t re
     const int32_t actual = coordinate(controller, raw);
     const int32_t desired = coordinate(controller, controller->target_raw);
     if (!controller->initialized || (elapsed >= STEERING_CONTROL_MAX_GAP_MS)) {
-        controller->reference_raw = raw;
         controller->updated_at_ms = now_ms;
         controller->error_counts = 0;
         controller->pwm = 0;
@@ -109,23 +107,20 @@ int16_t steering_controller_update(steering_controller_t *controller, int16_t re
         controller->initialized = true;
         return 0;
     }
-    /* Apply an outward-limit stop on every call, not just the 100 Hz update. */
+    /* Enforce travel limits on every call, including between control updates. */
     if (((actual <= controller->left_counts) && (controller->pwm < 0)) ||
         ((actual >= controller->right_counts) && (controller->pwm > 0))) {
         controller->pwm = 0;
         controller->updated_at_ms = now_ms;
-        /* Keep the brake for a full control period. Do not issue an inward
-         * reversal in this same call after blocking the old outward PWM. */
+        /* Hold zero PWM for one control period before reversing inward. */
         return 0;
     }
     if (elapsed < STEERING_CONTROL_PERIOD_MS) {
         return controller->pwm;
     }
     controller->updated_at_ms = now_ms;
-    controller->reference_raw = controller->target_raw;
     const int32_t error = desired - actual;
     controller->error_counts = error;
-    /* Two valid 12-bit coordinates give |error| < 4096, fitting int32_t. */
     const int32_t absolute_error = (int32_t)int32_magnitude(error);
     if ((absolute_error <= STEERING_CONTROL_STOP_COUNTS) ||
         (!controller->moving && (absolute_error < STEERING_CONTROL_START_COUNTS))) {
@@ -149,8 +144,7 @@ int16_t steering_controller_update(steering_controller_t *controller, int16_t re
         drive = 0;
     }
 
-    /* Brake before reversing; never ramp an old-direction output through a
-     * new-direction command. Position stops bypass the normal output ramp. */
+    /* Stop before reversing; position limits bypass the PWM ramp. */
     if ((drive == 0) || ((controller->pwm < 0) && (drive > 0)) ||
         ((controller->pwm > 0) && (drive < 0))) {
         controller->pwm = 0;

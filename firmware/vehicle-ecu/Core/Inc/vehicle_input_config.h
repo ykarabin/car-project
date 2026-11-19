@@ -3,8 +3,7 @@
 
 #include <stdint.h>
 
-/* Vehicle-side neutral band for both sticks, in +/-1000 command units.
- * Normal control, calibration entry/capture and resume use one policy. */
+/* Shared neutral band for both sticks, in +/-1000 units. */
 #define VEHICLE_STICK_DEADBAND INT32_C(30)
 
 #endif

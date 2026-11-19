@@ -4,13 +4,11 @@
 #include "esp_err.h"
 #include "pwm_rc_types.h"
 
-/* Owns one MCPWM capture timer and three input channels. Call once at startup. */
+/* Start capture for the three PWM inputs once at startup. */
 esp_err_t pwm_rc_start(void);
 
-/* Thread-safe snapshot. All three channels must be valid and fresh.
- * Invalid snapshots have zeroed normalized channels and timestamps.
- * PWM carries no RF-link flag. Valid failsafe/held pulses remain valid inputs.
- */
+/* Thread-safe snapshot; all channels must be fresh and valid.
+ * Valid hold/failsafe pulses cannot be distinguished from live RC input. */
 esp_err_t pwm_rc_get_sample(pwm_rc_sample_t *sample);
 
 #endif
