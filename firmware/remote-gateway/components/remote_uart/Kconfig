@@ -1,0 +1,8 @@
+menu "Remote Gateway UART"
+
+    config REMOTE_UART_TX_GPIO
+        int "UART2 TX GPIO (connect to Vehicle ECU RX)"
+        range 0 48
+        default 4
+
+endmenu

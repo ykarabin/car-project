@@ -1,0 +1,68 @@
+# Local working material and private tests
+/.local/
+/tests/
+/firmware/remote-gateway/tests/
+build/
+
+# Keep only the submission documentation and upstream notices
+*.md
+!/README.md
+!/docs/architecture.md
+!/docs/hardware.md
+!/docs/usage.md
+!**/LICENSE.md
+
+# Local assistant configuration
+AGENTS.md
+AGENTS.local.md
+CLAUDE.md
+GEMINI.md
+.agents/
+.codex/
+.claude/
+.cursor/
+
+# Editor and machine-specific configuration
+.vscode/
+.idea/
+.settings/
+.devcontainer/
+.clangd
+.clangd/
+.mxproject
+mx.scratch
+CMakeUserPresets.json
+
+# Generated build output (keep CMakeLists, toolchains and sdkconfig.defaults)
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+compile_commands.json
+sdkconfig
+sdkconfig.old
+managed_components/
+*.o
+*.obj
+*.a
+*.elf
+*.bin
+*.hex
+*.map
+*.su
+*.log
+
+# Temporary and operating-system files
+.DS_Store
+._*
+Thumbs.db
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*~
+*.swp
+*.swo
+*.tmp
+*.bak

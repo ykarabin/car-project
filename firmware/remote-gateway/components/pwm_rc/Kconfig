@@ -1,0 +1,51 @@
+menu "Remote Gateway PWM RC"
+
+    config PWM_RC_CH1_GPIO
+        int "CH1 steering capture GPIO"
+        range 0 48
+        default 5
+
+    config PWM_RC_CH2_GPIO
+        int "CH2 throttle capture GPIO"
+        range 0 48
+        default 6
+
+    config PWM_RC_CH3_GPIO
+        int "CH3 mode button capture GPIO"
+        range 0 48
+        default 7
+
+    config PWM_RC_TIMEOUT_MS
+        int "PWM channel freshness timeout (ms)"
+        range 50 500
+        default 100
+
+    config PWM_RC_MIN_US
+        int "Calibration minimum pulse (us)"
+        range 800 2200
+        default 1000
+
+    config PWM_RC_CENTER_US
+        int "Calibration center pulse (us)"
+        range 800 2200
+        default 1500
+
+    config PWM_RC_MAX_US
+        int "Calibration maximum pulse (us)"
+        range 800 2200
+        default 2000
+
+    config PWM_RC_DEADBAND_US
+        int "Steering and throttle neutral deadband (+/-us)"
+        range 0 100
+        default 20
+
+    config PWM_RC_STEERING_INVERTED
+        bool "Invert PWM steering"
+        default n
+
+    config PWM_RC_THROTTLE_INVERTED
+        bool "Invert PWM throttle"
+        default n
+
+endmenu
