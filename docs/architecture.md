@@ -35,6 +35,51 @@ ESP32 вибирає перше валідне джерело ELRS/PWM і збе
 Обидва джерела передають конструктору UART-команди нормалізовані стіки
 та вже визначений номер режиму 1…3.
 
+## Шари архітектури
+
+```mermaid
+flowchart TB
+    subgraph REL[Reliability]
+        direction LR
+        WDT[control_watchdog: IWDG 500 мс]
+        SAFE[motor_safety: FLT, latch]
+        FS[fault_shutdown]
+        MONR[remote_command_monitor: свіжість, нейтраль]
+    end
+    subgraph OUT[Transport / Output]
+        direction LR
+        PROTO[shared/remote_protocol: формат, CRC, парсер]
+        LOGM[vehicle_log, vehicle_log_format, debug_console: RTT]
+    end
+    subgraph LOGIC[Logic]
+        direction LR
+        SRC[Gateway: remote_source, remote_input]
+        VC[vehicle_control: режими, нейтраль]
+        DRV[drive_controller: PI + FF]
+        STR[steering_controller: P]
+        CALS[steering_calibration, _service]
+    end
+    subgraph PER[Periph]
+        direction LR
+        GWP[Gateway: elrs/crsf UART1, pwm_rc MCPWM, remote_uart UART2]
+        UARTP[remote_uart: USART2 RX IT]
+        ENCP[steering_encoder TIM4, rear_encoders TIM3, wheel_speed]
+        MOTP[motor_control: TIM1 PWM, DIR, SLP]
+        BRDP[board_controls PC13/PF2, calibration_storage Flash]
+    end
+    PER --> LOGIC
+    LOGIC --> OUT
+    REL -. нагляд .-> PER
+    REL -. нагляд .-> LOGIC
+```
+
+| Шар | Відповідальність |
+| --- | --- |
+| Periph | Ініціалізація й обслуговування апаратури, ISR, знімки датчиків |
+| Logic | Вибір джерела, режими, регулятори, автомати станів, калібрування |
+| Transport / Output | Протокол Gateway → ECU, черга й форматування діагностики RTT |
+| Reliability | Watchdog, фільтр і фіксація FLT, аварійне вимкнення, контроль свіжості команд і нейтралі |
+
 ## Задачі та синхронізація
 
 | Задача STM32 | Пріоритет FreeRTOS | Стек | Робота |
