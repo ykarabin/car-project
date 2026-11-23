@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 project(crsf_host_tests C)
+include(${CMAKE_CURRENT_LIST_DIR}/../../../tools/cmake/HostTestOptions.cmake)
 
 enable_testing()
 add_executable(crsf_test crsf_test.c ../components/elrs/crsf.c)

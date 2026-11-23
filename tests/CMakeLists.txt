@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 project(ride_on_car_host_tests C)
+include(../tools/cmake/HostTestOptions.cmake)
 enable_testing()
 
 add_executable(int32_math_test int32_math_test.c)

@@ -65,6 +65,32 @@ ctest --test-dir build/host-tests --output-on-failure
 `firmware/remote-gateway/tests` можна зібрати й окремо. Тести моделюють
 HAL, таймери та FreeRTOS; вони не замінюють перевірку на стенді.
 
+Додаткові режими (`tools/cmake/HostTestOptions.cmake`):
+
+```sh
+# ASan + UBSan: будь-яке переповнення, вихід за межі чи UB валить тест
+cmake -S tests -B build/sanitize -DCMAKE_BUILD_TYPE=Debug -DHOST_SANITIZE=ON
+cmake --build build/sanitize && ctest --test-dir build/sanitize --output-on-failure
+
+# Покриття (налаштування фільтрів — gcovr.cfg у корені)
+cmake -S tests -B build/coverage -DCMAKE_BUILD_TYPE=Debug -DHOST_COVERAGE=ON
+cmake --build build/coverage && ctest --test-dir build/coverage
+gcovr build/coverage --html-details build/coverage/index.html
+```
+
+На macOS з Apple clang до gcovr додати `--gcov-executable "xcrun llvm-cov gcov"`.
+Покриття — орієнтир, де тести не проходять гілки, порогу немає.
+На 24.11.2026: рядки 93,9 %, гілки 87,6 %.
+
+## Попередження компілятора
+
+Власні файли ECU (`Core/Src`, без CubeMX) і `shared/remote_protocol`
+збираються з `-Wextra -Wconversion -Wsign-conversion -Wshadow -Wformat=2
+-Wundef -Wstrict-prototypes -Wmissing-prototypes -Werror`
+(`firmware/vehicle-ecu/CMakeLists.txt`). Заголовки HAL, CMSIS, FreeRTOS і RTT
+підключені як системні, тож їхні попередження не заважають. Компоненти
+Gateway і хостові тести мають подібні прапорці у своїх CMakeLists.
+
 ## Форматування й статичний аналіз
 
 Стиль задають `.clang-format` (C) і `.editorconfig` (решта файлів).
@@ -86,7 +112,8 @@ tools/lint/check.py cppcheck            # cppcheck + MISRA, порівняння
 `.github/workflows/ci.yml` запускається на push у `main` / `develop`, на PR
 і вручну:
 
-- хостові тести ECU й Gateway (clang);
+- хостові тести ECU й Gateway (clang), окремо з ASan + UBSan і з покриттям
+  (GCC + gcovr: підсумок у Summary запуску, HTML — artifact `coverage-report`);
 - ECU Debug і Release з Arm GNU Toolchain 14.3.rel1 та перевірка образу
   `tools/ci/check_ecu_image.py`: нічого не записується в резерв калібрування,
   образ уміщується в 508 КБ;

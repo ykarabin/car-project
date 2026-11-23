@@ -18,17 +18,44 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: ECU tests
+      - name: Host tests (ECU + Gateway)
         run: |
           cmake -S tests -B build/host-tests -DCMAKE_BUILD_TYPE=Release
           cmake --build build/host-tests --parallel
           ctest --test-dir build/host-tests --output-on-failure
 
-      - name: Gateway tests
+      - name: Gateway tests (standalone CMake project)
         run: |
           cmake -S firmware/remote-gateway/tests -B build/gateway-tests -DCMAKE_BUILD_TYPE=Release
           cmake --build build/gateway-tests --parallel
           ctest --test-dir build/gateway-tests --output-on-failure
+
+      - name: Tests with ASan + UBSan
+        run: |
+          # Older ASan runtimes fail with the kernel's high-entropy ASLR.
+          sudo sysctl -w vm.mmap_rnd_bits=28
+          cmake -S tests -B build/sanitize-tests -DCMAKE_BUILD_TYPE=Debug -DHOST_SANITIZE=ON
+          cmake --build build/sanitize-tests --parallel
+          ctest --test-dir build/sanitize-tests --output-on-failure
+
+      - name: Coverage (GCC + gcovr)
+        env:
+          CC: gcc
+        run: |
+          python3 -m venv /tmp/gcovr && /tmp/gcovr/bin/pip install --quiet "gcovr==8.8"
+          cmake -S tests -B build/coverage-tests -DCMAKE_BUILD_TYPE=Debug -DHOST_COVERAGE=ON
+          cmake --build build/coverage-tests --parallel
+          ctest --test-dir build/coverage-tests --output-on-failure
+          mkdir -p build/coverage
+          /tmp/gcovr/bin/gcovr build/coverage-tests \
+            --markdown-summary build/coverage/summary.md \
+            --html-details build/coverage/index.html
+          cat build/coverage/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: build/coverage/
 
   lint:
     name: Lint (clang-format, cppcheck MISRA)

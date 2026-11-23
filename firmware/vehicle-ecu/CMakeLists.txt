@@ -75,6 +75,28 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ThirdParty/SEGGER_RTT
 )
 
+# Vendor headers as system headers: strict warnings below apply to our code only
+# (GCC ignores -I for a directory that is also given with -isystem).
+target_include_directories(${CMAKE_PROJECT_NAME} SYSTEM PRIVATE
+    ThirdParty/SEGGER_RTT
+    Drivers/STM32G4xx_HAL_Driver/Inc
+    Drivers/STM32G4xx_HAL_Driver/Inc/Legacy
+    Drivers/CMSIS/Device/ST/STM32G4xx/Include
+    Drivers/CMSIS/Include
+    Middlewares/Third_Party/FreeRTOS/Source/include
+    Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
+    Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
+)
+
+# Strict warnings for the project's own sources (CubeMX, HAL, FreeRTOS, RTT keep defaults).
+set(ECU_STRICT_WARNINGS
+    -Wextra -Wconversion -Wsign-conversion -Wshadow -Wformat=2 -Wundef
+    -Wstrict-prototypes -Wmissing-prototypes -Werror
+)
+get_target_property(ECU_SOURCES ${CMAKE_PROJECT_NAME} SOURCES)
+list(FILTER ECU_SOURCES INCLUDE REGEX "^Core/Src/")
+set_source_files_properties(${ECU_SOURCES} PROPERTIES COMPILE_OPTIONS "${ECU_STRICT_WARNINGS}")
+
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
@@ -90,3 +112,4 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
 )
+target_compile_options(remote_protocol PRIVATE ${ECU_STRICT_WARNINGS})
