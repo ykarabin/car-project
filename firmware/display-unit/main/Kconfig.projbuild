@@ -1,0 +1,50 @@
+menu "Display unit"
+
+config DASH_DEV_DEMO_BUTTON
+    bool "Always-visible DEMO button (development)"
+    default y
+    help
+        Shows a small DEMO button in the bottom-left corner on every screen that opens
+        the demo scene picker without the parent PIN. Turn off for the car.
+
+config DASH_LOG_FPS
+    bool "Log rendered frames per second"
+    default y
+    help
+        Prints the number of LVGL refreshes per second to the console.
+
+config DASH_LVGL_CORE1
+    bool "Pin the LVGL task to core 1"
+    default y
+    help
+        The RGB panel's bounce-buffer copy runs as an ISR on core 0 (about a third of that core).
+        Pinning the LVGL task to core 1 keeps rendering off it: measured 5-7 % less draw time per frame.
+
+config DASH_PCLK_MHZ
+    int "RGB panel pixel clock, MHz"
+    range 16 40
+    default 21
+    help
+        The panel refreshes at pclk / (1369 * 637) Hz: 21 MHz gives 24 Hz, 26 MHz about 30 Hz. LVGL
+        is synchronised to the refresh, so this is the frame-rate ceiling (rendering takes 1-15 ms per
+        frame, far less than the 41 ms of one refresh). Tested on the 5B panel: 26 MHz already flickers and shows
+        artifacts (PSRAM bandwidth for the bounce buffer refill). Keep 21.
+
+config DASH_RGB_BOUNCE
+    bool "Use the RGB panel bounce buffer (keep on)"
+    default y
+    help
+        With the bounce buffer the panel is fed from a small internal-RAM buffer that an ISR on core 0
+        refills from the PSRAM frame buffers (about a third of core 0, ~14 ms per frame). Turning it off
+        lets the panel DMA read PSRAM directly and frees that core time, but while the CPU renders into
+        PSRAM the picture can flicker, shift sideways or tear. Tested on the 5B panel: without it the picture
+        flickers and shifts sideways constantly. Keep it on.
+
+config DASH_DEMO_THEME_CYCLE
+    bool "Autodemo cycles the gauge themes (profiling aid)"
+    default n
+    help
+        While the autodemo runs, switch to the next gauge theme every 10 s. Lets the frame profiler
+        cover all four themes without touching the panel.
+
+endmenu

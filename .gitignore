@@ -56,3 +56,6 @@ venv/
 *.swo
 *.tmp
 *.bak
+
+# Display unit simulator screenshots
+firmware/display-unit/tools/sim/out/

@@ -105,3 +105,29 @@ jobs:
             firmware/remote-gateway/build/bootloader/bootloader.bin
             firmware/remote-gateway/build/partition_table/partition-table.bin
             firmware/remote-gateway/build/flash_args
+
+  display-unit:
+    name: Display Unit
+    runs-on: ubuntu-24.04
+    container: espressif/idf:v6.0.1
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build
+        working-directory: firmware/display-unit
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py set-target esp32s3
+          idf.py build
+          idf.py size
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: display-unit
+          path: |
+            firmware/display-unit/build/display-unit.elf
+            firmware/display-unit/build/display-unit.bin
+            firmware/display-unit/build/bootloader/bootloader.bin
+            firmware/display-unit/build/partition_table/partition-table.bin
+            firmware/display-unit/build/flash_args

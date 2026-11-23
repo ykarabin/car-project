@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bambi M 6111 · дизайн дисплейного блока</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0c0e; --dial:#14161a; --track:#1f2228; --line:#2a2d34; --line2:#3a3d45;
+  --text:#f2f2f2; --muted:#8a8f98; --dim:#6b7079;
+  --red:#e5322d; --green:#3fb950; --amber:#d29922; --beam:#fff3c4; --blue:#58a6ff;
+  --page:#101114; --panel:#17191d; --panel2:#1e2126;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--text);font-family:Montserrat,system-ui,sans-serif}
+a{color:var(--blue)}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 20px 60px}
+header h1{font-size:26px;font-weight:600;margin:0 0 6px}
+header p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;margin-top:24px;align-items:start}
+@media (max-width:980px){.layout{grid-template-columns:minmax(0,1fr)}}
+
+.device{background:#000;border-radius:30px;padding:16px;border:1px solid var(--line)}
+.stage{position:relative;width:100%;overflow:hidden;border-radius:14px}
+#screen{position:absolute;left:0;top:0;width:800px;height:480px;transform-origin:0 0;background:var(--bg);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.layer{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .35s ease}
+.layer.on{opacity:1;pointer-events:auto}
+.layer svg{display:block;width:800px;height:480px}
+.hint{color:var(--dim);font-size:12px;margin-top:10px;line-height:1.6}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+.panel h2{font-size:14px;font-weight:600;margin:0 0 12px;color:var(--text)}
+.panel + .panel{margin-top:16px}
+.ctl{margin-bottom:14px}
+.ctl label,.ctl .lbl{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button,.btn,.toggles button{font:inherit;font-size:13px;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;min-height:36px}
+.seg button[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
+.btn:hover,.seg button:hover{border-color:var(--line2)}
+.toggles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.toggles button[aria-pressed="true"]{background:#24303f;border-color:var(--blue);color:#d6e8ff}
+.scenes{display:flex;flex-wrap:wrap;gap:6px}
+.scenes .btn{font-size:12px;padding:6px 10px;min-height:32px}
+input[type=range]{width:100%;accent-color:var(--red)}
+
+.spec{margin-top:40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+.card h3{margin:0 0 12px;font-size:15px;font-weight:600}
+.sw{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;font-size:13px;margin-bottom:8px}
+.sw i{width:28px;height:28px;border-radius:8px;border:1px solid var(--line2);display:block}
+.sw code{color:var(--muted);font-size:12px}
+.card p,.card li{font-size:13px;color:#c9ccd3;line-height:1.6}
+.card ul{margin:0;padding-left:18px}
+.type-row{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0}
+.type-row span:last-child{color:var(--muted);font-size:12px}
+pre.map{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#c9ccd3;background:var(--bg);border-radius:10px;padding:12px;overflow:auto;margin:0}
+
+/* No effects on the gauge screens: the pedal is a plain button, so the car sits at its limit almost all
+   the time and any blink, hop or sweep would just run forever. Only the safety alert ring pulses. */
+/* the road in "Пригода" slides while the car moves (the one continuous motion besides the turn arrows) */
+.road-anim{animation:road .9s linear infinite;animation-play-state:paused}
+@keyframes road{to{stroke-dashoffset:60}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2.5px)}75%{transform:translateX(2.5px)}}
+.flip{transform-box:fill-box;transform-origin:50% 50%;transform:scaleX(-1)}
+.pulse{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+/* splash (2.4 s): the crest fades in, a light sweeps across it, it fades out, then the drive screen */
+.sp-crest{position:absolute;left:322px;top:140px;width:156px;height:200px;opacity:0}
+.sp-crest img{display:block;width:100%;height:100%}
+.sp-sweep{position:absolute;inset:0;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.7) 50%,transparent 62%) no-repeat;background-size:300% 100%;background-position:100% 0;
+  -webkit-mask:url(assets/porsche-crest.png) center/100% 100% no-repeat;mask:url(assets/porsche-crest.png) center/100% 100% no-repeat}
+#splash.play .sp-crest{animation:crest 2.3s ease forwards}
+@keyframes crest{0%{opacity:0}30%{opacity:1}78%{opacity:1}100%{opacity:0}}
+#splash.play .sp-sweep{animation:sweep .8s ease-in-out .8s forwards}
+@keyframes sweep{to{background-position:0 0}}
+
+
+/* level overlay */
+#levelOv{background:none}
+#levelOv.on{pointer-events:none}
+
+/* html layers in screen */
+.scr-btn{font:inherit;color:var(--text);background:var(--dial);border:1px solid var(--line);border-radius:14px;cursor:pointer}
+.scr-btn:active{background:var(--track)}
+#pin,#settings{background:var(--bg)}
+#pin{display:grid;grid-template-columns:330px 1fr;padding:36px 40px;gap:20px;align-items:center}
+.pin-title{font-size:30px;font-weight:600}
+.pin-sub{font-size:15px;color:var(--muted);margin-top:8px}
+.pin-dots{display:flex;gap:18px;margin:34px 0 14px}
+.pin-dots span{width:22px;height:22px;border-radius:50%;border:2px solid var(--line2)}
+.pin-dots span.f{background:var(--text);border-color:var(--text)}
+.pin-dots.shake{animation:shake .12s linear 4}
+.pin-msg{height:22px;font-size:15px;color:var(--amber)}
+.pin-cancel{margin-top:30px;padding:14px 22px;font-size:17px}
+.pin-pad{display:grid;grid-template-columns:repeat(3,108px);gap:12px;justify-content:end}
+.pin-pad button{height:88px;font-size:32px;font-weight:500}
+.pin-pad button:disabled{opacity:.35}
+#settings{padding:22px 28px}
+.set-head{display:flex;justify-content:space-between;align-items:center}
+.set-title{font-size:26px;font-weight:600}
+.set-head .scr-btn{padding:12px 22px;font-size:17px}
+.set-sub{font-size:13px;color:var(--muted);margin:16px 0 6px}
+.set-row{display:grid;grid-template-columns:52px 120px 1fr 120px;align-items:center;gap:14px;height:62px}
+.set-row svg{width:52px;height:44px}
+.set-name{font-size:18px}
+.set-val{font-size:20px;text-align:right;font-weight:500}
+.set-row input[type=range]{-webkit-appearance:none;appearance:none;height:44px;background:transparent}
+.set-row input[type=range]::-webkit-slider-runnable-track{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--red) var(--p,50%),var(--track) var(--p,50%))}
+.set-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:32px;border-radius:50%;background:var(--text);margin-top:-11px}
+.set-row input[type=range]::-moz-range-track{height:10px;border-radius:5px;background:var(--track)}
+.set-row input[type=range]::-moz-range-progress{height:10px;border-radius:5px;background:var(--red)}
+.set-row input[type=range]::-moz-range-thumb{width:32px;height:32px;border-radius:50%;background:var(--text);border:0}
+.set-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+.set-card{background:var(--dial);border-radius:14px;padding:12px 16px;height:96px;display:flex;flex-direction:column;justify-content:space-between}
+.set-card .k{font-size:13px;color:var(--muted)}
+.set-card .v{display:flex;align-items:center;justify-content:space-between;font-size:22px}
+.set-card .v .scr-btn{width:46px;height:46px;font-size:24px;padding:0}
+.set-card input[type=range]{accent-color:var(--red)}
+.set-foot{text-align:center;font-size:13px;color:var(--muted);margin-top:10px}
+#alertOv{background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.al-ring{width:150px;height:150px;border-radius:50%;border:5px solid var(--amber);display:flex;align-items:center;justify-content:center}
+.al-title{font-size:40px;font-weight:600;margin-top:24px}
+.al-sub{font-size:18px;color:var(--muted);margin-top:8px}
+.al-ok{margin-top:28px;padding:14px 34px;font-size:18px}
+#tbZz{display:none}
+#holdZone{position:absolute;left:0;top:0;width:150px;height:72px;z-index:20;cursor:pointer}
+#holdZone .bar{position:absolute;left:24px;bottom:14px;height:3px;width:0;background:var(--red);border-radius:2px}
+#holdZone.holding .bar{width:70px;transition:width 1.5s linear}
+.toast{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line2);padding:10px 18px;border-radius:12px;font-size:15px;z-index:40;opacity:0;transition:opacity .3s}
+.toast.on{opacity:1}
+.set-actions{display:flex;gap:10px}
+#themes{background:var(--bg);padding:22px 28px}
+.th-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:40px}
+.th-card{font:inherit;color:var(--text);background:var(--dial);border:2px solid var(--line);border-radius:16px;padding:10px;text-align:left;cursor:pointer;display:block}
+.th-card:active{background:var(--track)}
+.th-card[aria-pressed="true"]{border-color:var(--red)}
+.layer svg.th-thumb{display:block;width:100%;height:auto;border-radius:9px;border:1px solid var(--line)}
+.th-name{font-size:18px;font-weight:600;margin-top:10px}
+.th-card[aria-pressed="true"] .th-name::after{content:" ✓";color:var(--red)}
+.th-hint{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45;min-height:35px}
+table.cost{border-collapse:collapse;width:100%;font-size:12px;line-height:1.5}
+table.cost th{text-align:left;color:var(--muted);font-weight:500;padding:6px 8px 6px 0;border-bottom:1px solid var(--line2)}
+table.cost td{vertical-align:top;padding:8px 8px 8px 0;border-bottom:1px solid var(--line);color:#c9ccd3}
+table.cost td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+.card.wide{grid-column:1/-1}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- radio page: absolute layout in 800x480 design px, the top bar (chrome) stays on top ---------- */
+#chrome.on{pointer-events:none}
+#radio{background:var(--bg)}
+#radio .a{position:absolute}
+.rd-card{background:var(--dial);border-radius:16px}
+.rd-b{position:absolute;display:flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-size:17px;font-weight:500;color:var(--text);background:var(--dial);border:1px solid var(--line);border-radius:14px;cursor:pointer;padding:0}
+.rd-b:active{background:var(--track)}
+.rd-b svg{width:28px;height:28px;fill:currentColor;flex:none}
+.rd-b.on{background:var(--red);border-color:var(--red);color:#fff}
+.rd-b.fav svg{fill:var(--red)}
+.rd-b.dis{opacity:.35;pointer-events:none}
+.rd-row{position:absolute;left:392px;width:384px;height:52px;background:var(--dial);border-radius:12px;border:2px solid transparent;cursor:pointer}
+.rd-row.on{background:var(--panel2);border-color:var(--red)}
+.rd-row .lg{position:absolute;left:5px;top:4px;width:40px;height:40px}
+.rd-row .lg svg{display:block}
+.rd-row .nm{position:absolute;left:56px;top:3px;width:210px;font-size:19px;font-weight:600;line-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd-row .sb{position:absolute;left:56px;top:26px;width:210px;font-size:14px;line-height:18px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd-row .fq{position:absolute;right:56px;top:11px;font-size:20px;font-weight:500;line-height:26px}
+.rd-row .hr{position:absolute;right:0;top:0;width:52px;height:48px;display:flex;align-items:center;justify-content:center;background:none;border:0;color:var(--dim);cursor:pointer;padding:0}
+.rd-row .hr svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2}
+.rd-row .hr.on{color:var(--red)}
+.rd-row .hr.on svg{fill:currentColor}
+.rd-tag{position:absolute;top:226px;height:24px;line-height:22px;padding:0 9px;border-radius:12px;border:1px solid var(--line2);font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.04em}
+.rd-tag.hi{color:var(--text);border-color:var(--muted)}
+.rd-seg{position:absolute;bottom:0;width:14px;border-radius:4px;background:var(--track);cursor:pointer}
+.rd-seg.on{background:var(--text)}
+.rd-seg.mut.on{background:var(--dim)}
+</style>
+</head>
+<body>
+
+<!-- shared art -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<g id="car">
+<path d="M 10 80 L 10 66 Q 12 58 30 55 L 95 46 Q 130 18 175 14 Q 220 12 255 34 Q 290 48 306 56 Q 314 60 312 72 L 310 82 L 270 82 A 25 25 0 0 0 220 82 L 100 82 A 25 25 0 0 0 50 82 Z" fill="#e5322d"/>
+<path d="M 104 46 Q 133 24 172 21 Q 212 20 240 38 Z" fill="#2a2d34"/>
+<line x1="180" y1="20" x2="178" y2="44" stroke="#e5322d" stroke-width="5"/>
+<path d="M 112 50 L 114 78 M 182 46 L 184 78" stroke="#b9241f" stroke-width="2" fill="none"/>
+<rect x="298" y="56" width="12" height="5" rx="2" fill="#ff6b5e"/>
+<circle cx="75" cy="82" r="21" fill="#16181c" stroke="#3a3d45" stroke-width="5"/>
+<circle cx="75" cy="82" r="6" fill="#3a3d45"/>
+<circle cx="245" cy="82" r="21" fill="#16181c" stroke="#3a3d45" stroke-width="5"/>
+<circle cx="245" cy="82" r="6" fill="#3a3d45"/>
+</g>
+<g id="turtle">
+<path d="M 10 72 L 0 66 L 12 64 Z" fill="#7bd88f"/>
+<rect x="26" y="74" width="16" height="18" rx="7" fill="#7bd88f"/>
+<rect x="78" y="74" width="16" height="18" rx="7" fill="#7bd88f"/>
+<path d="M 14 76 Q 14 26 60 24 Q 106 26 106 76 Z" fill="#3fb950"/>
+<path d="M 46 38 L 60 32 L 74 38 L 74 56 L 60 62 L 46 56 Z" fill="#2a8a3e"/>
+<path d="M 24 60 L 36 46 L 44 60 Z M 76 60 L 84 46 L 96 60 Z" fill="#2a8a3e"/>
+<rect x="12" y="72" width="96" height="9" rx="4.5" fill="#2a8a3e"/>
+<circle cx="112" cy="62" r="14" fill="#7bd88f"/>
+<circle cx="116" cy="58" r="4" fill="#ffffff"/><circle cx="117" cy="58" r="2" fill="#0b0c0e"/>
+<path d="M 112 68 Q 117 71 122 68" fill="none" stroke="#2a8a3e" stroke-width="2" stroke-linecap="round"/>
+</g>
+<g id="hare">
+<line x1="2" y1="62" x2="16" y2="62" stroke="#5b6069" stroke-width="3" stroke-linecap="round"/>
+<line x1="6" y1="74" x2="18" y2="74" stroke="#5b6069" stroke-width="3" stroke-linecap="round"/>
+<ellipse cx="80" cy="26" rx="7" ry="22" fill="#d9dce1" transform="rotate(-18 80 26)"/>
+<ellipse cx="80" cy="27" rx="3" ry="15" fill="#f4a7b9" transform="rotate(-18 80 27)"/>
+<ellipse cx="95" cy="24" rx="7" ry="22" fill="#d9dce1" transform="rotate(8 95 24)"/>
+<ellipse cx="95" cy="25" rx="3" ry="15" fill="#f4a7b9" transform="rotate(8 95 25)"/>
+<ellipse cx="38" cy="96" rx="15" ry="6" fill="#b8bcc4"/>
+<ellipse cx="56" cy="74" rx="33" ry="22" fill="#d9dce1"/>
+<circle cx="24" cy="66" r="9" fill="#ffffff"/>
+<ellipse cx="78" cy="96" rx="10" ry="5" fill="#b8bcc4"/>
+<circle cx="94" cy="58" r="19" fill="#d9dce1"/>
+<circle cx="100" cy="54" r="4" fill="#ffffff"/><circle cx="101" cy="54" r="2" fill="#0b0c0e"/>
+<circle cx="112" cy="61" r="3" fill="#f4a7b9"/>
+<path d="M 103 67 Q 108 70 112 67" fill="none" stroke="#8a8f98" stroke-width="2" stroke-linecap="round"/>
+</g>
+<g id="cheetah">
+<line x1="0" y1="56" x2="14" y2="56" stroke="#5b6069" stroke-width="3" stroke-linecap="round"/>
+<line x1="4" y1="70" x2="14" y2="70" stroke="#5b6069" stroke-width="3" stroke-linecap="round"/>
+<path d="M 26 64 Q 10 54 14 36" fill="none" stroke="#e3a52b" stroke-width="7" stroke-linecap="round"/>
+<circle cx="14" cy="36" r="4" fill="#5a3a0c"/>
+<line x1="34" y1="78" x2="16" y2="92" stroke="#c98b1c" stroke-width="10" stroke-linecap="round"/>
+<line x1="86" y1="80" x2="112" y2="90" stroke="#c98b1c" stroke-width="10" stroke-linecap="round"/>
+<ellipse cx="60" cy="70" rx="40" ry="17" fill="#e3a52b"/>
+<line x1="40" y1="80" x2="30" y2="100" stroke="#e3a52b" stroke-width="10" stroke-linecap="round"/>
+<line x1="82" y1="82" x2="100" y2="100" stroke="#e3a52b" stroke-width="10" stroke-linecap="round"/>
+<circle cx="42" cy="64" r="4" fill="#5a3a0c"/><circle cx="56" cy="74" r="4" fill="#5a3a0c"/><circle cx="70" cy="62" r="4" fill="#5a3a0c"/><circle cx="84" cy="72" r="3.5" fill="#5a3a0c"/><circle cx="34" cy="74" r="3" fill="#5a3a0c"/>
+<circle cx="100" cy="44" r="6" fill="#e3a52b"/><circle cx="116" cy="45" r="6" fill="#e3a52b"/>
+<circle cx="107" cy="58" r="16" fill="#e3a52b"/>
+<circle cx="111" cy="54" r="4" fill="#ffffff"/><circle cx="112" cy="54" r="2" fill="#0b0c0e"/>
+<path d="M 110 58 Q 112 66 117 70" fill="none" stroke="#5a3a0c" stroke-width="2.5" stroke-linecap="round"/>
+<circle cx="122" cy="60" r="3" fill="#5a3a0c"/>
+</g>
+</defs></svg>
+
+<div class="wrap">
+<header>
+  <h1>Bambi M 6111 · дисплейний блок</h1>
+  <p>Інтерактивний прототип для екрана 5" (800×480) на ESP32-S3. Дані зараз імітуються. На машині їх даватиме CAN-шина. Керуй станом праворуч або обирай готову сцену.</p>
+</header>
+
+<div class="layout">
+<div>
+  <div class="device">
+    <div class="stage" id="stage">
+      <div id="screen">
+
+        <!-- 1. SPLASH -->
+        <div class="layer" id="splash">
+          <div class="sp-crest" role="img" aria-label="Заставка: герб Porsche зі світловим відблиском"><img src="assets/porsche-crest.png" alt=""><i class="sp-sweep"></i></div>
+        </div>
+
+        <!-- 2a. DRIVE · theme "Кластер" -->
+        <div class="layer" id="drive">
+          <svg viewBox="0 0 800 480" role="img" aria-label="Тема Кластер: заряд, швидкість, запас ходу">
+            <circle cx="114" cy="300" r="100" fill="#14161a" stroke="#2a2d34" stroke-width="2"/>
+            <path d="M 49.9 337 A 74 74 0 1 1 178.1 337" pathLength="100" fill="none" stroke="#1f2228" stroke-width="12" stroke-linecap="round"/>
+            <path id="battArc" d="M 49.9 337 A 74 74 0 1 1 178.1 337" pathLength="100" fill="none" stroke="#3fb950" stroke-width="12" stroke-linecap="round" stroke-dasharray="78 100"/>
+            <text id="battText" x="114" y="306" text-anchor="middle" font-size="40" font-weight="600" fill="#f2f2f2">78%</text>
+            <text x="114" y="334" text-anchor="middle" font-size="16" fill="#8a8f98">заряд</text>
+
+            <circle cx="686" cy="300" r="100" fill="#14161a" stroke="#2a2d34" stroke-width="2"/>
+            <path d="M 621.9 337 A 74 74 0 1 1 750.1 337" pathLength="100" fill="none" stroke="#1f2228" stroke-width="12" stroke-linecap="round"/>
+            <path id="rangeArc" d="M 621.9 337 A 74 74 0 1 1 750.1 337" pathLength="100" fill="none" stroke="#c9ccd3" stroke-width="12" stroke-linecap="round" stroke-dasharray="70 100"/>
+            <text id="rangeText" x="686" y="306" text-anchor="middle" font-size="40" font-weight="600" fill="#f2f2f2">11,7</text>
+            <text x="686" y="334" text-anchor="middle" font-size="16" fill="#8a8f98">км запасу</text>
+
+            <circle cx="400" cy="270" r="200" fill="#14161a" stroke="#2a2d34" stroke-width="2"/>
+            <path d="M 239.8 362.5 A 185 185 0 1 1 560.2 362.5" pathLength="100" fill="none" stroke="#3a3d45" stroke-width="10" stroke-dasharray="0.6 9.4" stroke-dashoffset="0.3"/>
+            <path d="M 257.1 352.5 A 165 165 0 1 1 542.9 352.5" pathLength="100" fill="none" stroke="#1f2228" stroke-width="20" stroke-linecap="round"/>
+            <path id="speedArc" d="M 257.1 352.5 A 165 165 0 1 1 542.9 352.5" pathLength="100" fill="none" stroke="#e5322d" stroke-width="20" stroke-linecap="round" stroke-dasharray="40 100"/>
+            <text id="gR" x="366" y="196" text-anchor="middle" font-size="20" fill="#6b7079">R</text>
+            <text id="gN" x="400" y="196" text-anchor="middle" font-size="20" fill="#6b7079">N</text>
+            <text id="gD" x="434" y="196" text-anchor="middle" font-size="20" fill="#6b7079">D</text>
+            <text id="speedText" x="400" y="334" text-anchor="middle" font-size="170" font-weight="600" fill="#f2f2f2">4</text>
+            <text x="400" y="366" text-anchor="middle" font-size="20" fill="#8a8f98">км/год</text>
+          </svg>
+        </div>
+
+        <!-- 2b. DRIVE · theme "Спорт": LED-смуга, велика цифра -->
+        <div class="layer" id="driveSport">
+          <svg viewBox="0 0 800 480" role="img" aria-label="Тема Спорт: LED-смуга швидкості, велика цифра, заряд">
+            <g id="spBar"></g>
+
+            <!-- hero: the speed, left-aligned block under the LED bar -->
+            <text id="spgR" x="187" y="194" text-anchor="middle" font-size="20" fill="#6b7079">R</text>
+            <text id="spgN" x="221" y="194" text-anchor="middle" font-size="20" fill="#6b7079">N</text>
+            <text id="spgD" x="255" y="194" text-anchor="middle" font-size="20" fill="#6b7079">D</text>
+            <text id="spSpeed" x="221" y="362" text-anchor="middle" font-size="190" font-weight="600" fill="#f2f2f2">4</text>
+            <text x="221" y="386" text-anchor="middle" font-size="20" fill="#8a8f98">км/год</text>
+
+            <!-- two cards stacked on the right, edges aligned with the LED bar -->
+            <rect x="440" y="166" width="318" height="122" rx="16" fill="#14161a" stroke="#2a2d34" stroke-width="2"/>
+            <text x="460" y="200" font-size="16" fill="#8a8f98">заряд</text>
+            <text id="spBattText" x="738" y="210" text-anchor="end" font-size="40" font-weight="600" fill="#f2f2f2">78%</text>
+            <g id="spBatt"></g>
+
+            <rect x="440" y="304" width="318" height="122" rx="16" fill="#14161a" stroke="#2a2d34" stroke-width="2"/>
+            <text x="460" y="338" font-size="16" fill="#8a8f98">запас ходу</text>
+            <text id="spRange" x="460" y="402" font-size="56" font-weight="600" fill="#f2f2f2">11,7</text>
+            <text x="738" y="402" text-anchor="end" font-size="20" fill="#8a8f98">км</text>
+
+          </svg>
+        </div>
+
+        <!-- 2c. DRIVE · theme "Аналог": запечений циферблат + стрілка -->
+        <div class="layer" id="driveAnalog">
+          <svg viewBox="0 0 800 480" role="img" aria-label="Тема Аналог: стрілковий спідометр, заряд, запас ходу">
+            <circle cx="400" cy="262" r="198" fill="#14161a" stroke="#2a2d34" stroke-width="2"/>
+            <circle cx="400" cy="262" r="186" fill="none" stroke="#1f2228" stroke-width="2"/>
+            <g id="anTicks"></g>
+            <text id="anSpeed" x="400" y="382" text-anchor="middle" font-size="110" font-weight="600" fill="#f2f2f2">4</text>
+            <text x="400" y="406" text-anchor="middle" font-size="18" fill="#8a8f98">км/год</text>
+            <g id="anNeedle" transform="translate(400 262) rotate(270)"><path id="anNeedleBody" d="M -26 -5 L 0 -9 L 118 -1.6 L 118 1.6 L 0 9 L -26 5 Z" fill="#e5322d"/></g>
+            <circle id="anHub" cx="400" cy="262" r="15" fill="#0b0c0e" stroke="#e5322d" stroke-width="3"/>
+
+            <text id="anBattText" x="100" y="204" text-anchor="middle" font-size="56" font-weight="600" fill="#f2f2f2">78%</text>
+            <text x="100" y="232" text-anchor="middle" font-size="18" fill="#8a8f98">заряд</text>
+            <g id="anSegs"></g>
+            <text id="anRange" x="100" y="336" text-anchor="middle" font-size="56" font-weight="600" fill="#f2f2f2">11,7</text>
+            <text x="100" y="366" text-anchor="middle" font-size="18" fill="#8a8f98">км запасу</text>
+
+            <!-- gear lever on the right, mirroring the left column -->
+            <rect x="672" y="164" width="56" height="196" rx="28" fill="#14161a" stroke="#2a2d34" stroke-width="2"/>
+            <text id="angR" x="700" y="210" text-anchor="middle" font-size="30" fill="#6b7079">R</text>
+            <text id="angN" x="700" y="276" text-anchor="middle" font-size="30" fill="#6b7079">N</text>
+            <text id="angD" x="700" y="342" text-anchor="middle" font-size="30" fill="#6b7079">D</text>
+          </svg>
+        </div>
+
+        <!-- 2d. DRIVE · theme "Пригода": великий персонаж, бульбашки заряду, дорога -->
+        <div class="layer" id="driveKids">
+          <svg id="kdSvg" viewBox="0 0 800 480" role="img" aria-label="Тема Пригода: персонаж, швидкість, заряд-бульбашки, дорога"></svg>
+        </div>
+
+        <!-- 2e. DRIVE · theme "Авто": фото авто посередині, швидкість над ним, заряд і запас обабіч -->
+        <div class="layer" id="driveAuto">
+          <svg id="auSvg" viewBox="0 0 800 480" role="img" aria-label="Тема Авто: фото авто, велика швидкість, заряд і запас ходу"></svg>
+        </div>
+
+        <!-- RADIO page (under the top bar) -->
+        <div class="layer" id="radio"></div>
+
+        <!-- status chrome shared by all themes: clock, today's trip, turn signals, warning telltales -->
+        <div class="layer" id="chrome">
+          <svg viewBox="0 0 800 480" role="img" aria-label="Годинник, пробіг за сьогодні, покажчики поворотів і контрольні лампи">
+            <text class="clk" x="24" y="46" font-size="32" font-weight="600" fill="#f2f2f2">14:32</text>
+            <line x1="124" y1="16" x2="124" y2="48" stroke="#2a2d34" stroke-width="2"/>
+            <text x="140" y="24" font-size="14" fill="#8a8f98">пробіг сьогодні</text>
+            <text id="tripTxt" x="140" y="48" font-size="24" font-weight="600" fill="#f2f2f2">1,4 км</text>
+
+            <!-- outdoor temperature in the right corner (permanent; hidden only while no sensor is connected); the telltales sit to its left -->
+            <g id="tlOutG"><text x="776" y="24" text-anchor="end" font-size="14" fill="#8a8f98">надворі</text>
+            <text id="tlOut" x="776" y="48" text-anchor="end" font-size="24" font-weight="600" fill="#f2f2f2">+12°</text></g>
+
+            <!-- turn signals: green arrows either side of the level character, blink in step; both blink for the hazards -->
+            <path id="turnL" d="M 312 32 L 329 17 L 329 25 L 352 25 L 352 39 L 329 39 L 329 47 Z" fill="#3fb950" opacity="0"/>
+            <path id="turnR" d="M 488 32 L 471 17 L 471 25 L 448 25 L 448 39 L 471 39 L 471 47 Z" fill="#3fb950" opacity="0"/>
+
+            <!-- speed level = the character (turtle / hare / cheetah), between the arrows -->
+            <g transform="translate(374 4) scale(0.40)"><g data-char="tb"></g></g>
+            <text id="tlZ" x="430" y="30" font-size="22" font-weight="600" fill="#8a8f98" opacity="0">z</text>
+
+            <!-- telltales, as in a real car: only the lit ones show; fixed slots from the right -->
+            <g id="tlLights" transform="translate(676 14)" fill="none" stroke="#3fb950" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" opacity="0">
+              <title>Фари</title>
+              <path d="M 17 6 C 27 6 32 12 32 18 C 32 24 27 30 17 30 Z"/><path d="M 13 10 L 4 13 M 13 18 L 4 21 M 13 26 L 4 29"/>
+            </g>
+            <g id="tlTemp" transform="translate(532 14)" fill="none" stroke="#d29922" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" opacity="0">
+              <title>Перегрів</title>
+              <path d="M 10 22 V 8 a 4 4 0 0 1 8 0 V 22 a 6 6 0 1 1 -8 0 Z"/><path d="M 14 13 V 25"/><circle cx="14" cy="27" r="2.6" fill="#d29922"/>
+              <path d="M 22 11 q 2.5 -2.4 5 0 t 5 0 M 22 19 q 2.5 -2.4 5 0 t 5 0"/>
+            </g>
+            <g id="tlCheck" transform="translate(580 14)" fill="none" stroke="#d29922" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" opacity="0">
+              <title>Перевірити авто: помилка</title>
+              <path d="M 9 11 H 14 V 8 H 23 V 11 H 27 L 29 14 H 32 V 26 H 29 L 26 29 H 12 L 9 26 Z"/><path d="M 9 16 H 4 V 24 H 9"/><path d="M 15 18 H 22 M 15 23 H 22"/>
+            </g>
+            <g id="tlRemote" transform="translate(628 14)" fill="none" stroke="#58a6ff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" opacity="0">
+              <title>Керують батьки</title>
+              <rect x="10" y="12" width="16" height="22" rx="4"/><path d="M 18 12 V 4"/><circle cx="18" cy="27" r="2.8" fill="#58a6ff"/>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 3. CAR -->
+        <div class="layer" id="carScr">
+          <svg viewBox="0 0 800 480" role="img" aria-label="Стан авто: фото збоку, заряд і мотори">
+            <text class="clk" x="24" y="40" font-size="18" fill="#f2f2f2">14:32</text>
+            <image href="assets/car-34.png" x="44" y="54" width="312" height="183"/>
+
+            <rect id="topBattBox" x="24" y="256" width="352" height="66" rx="12" fill="#14161a" stroke="#3fb950" stroke-width="2"/>
+            <text x="44" y="296" font-size="16" fill="#8a8f98">Заряд</text>
+            <text id="topBatt" x="356" y="302" text-anchor="end" font-size="32" font-weight="600" fill="#3fb950">78%</text>
+
+            <rect x="24" y="334" width="170" height="96" rx="12" fill="#14161a"/>
+            <circle id="motL" cx="56" cy="382" r="16" fill="#0b0c0e" stroke="#f2f2f2" stroke-width="3"/>
+            <text x="56" y="387" text-anchor="middle" font-size="13" font-weight="600" fill="#8a8f98">Л</text>
+            <text x="84" y="370" font-size="13" fill="#8a8f98">Мотор</text>
+            <text id="tL" x="84" y="398" font-size="22" font-weight="600" fill="#f2f2f2">38°</text>
+            <rect x="206" y="334" width="170" height="96" rx="12" fill="#14161a"/>
+            <circle id="motR" cx="238" cy="382" r="16" fill="#0b0c0e" stroke="#f2f2f2" stroke-width="3"/>
+            <text x="238" y="387" text-anchor="middle" font-size="13" font-weight="600" fill="#8a8f98">П</text>
+            <text x="266" y="370" font-size="13" fill="#8a8f98">Мотор</text>
+            <text id="tR" x="266" y="398" font-size="22" font-weight="600" fill="#f2f2f2">41°</text>
+
+            <g font-size="16">
+              <rect x="400" y="70" width="376" height="52" rx="12" fill="#14161a"/>
+              <text x="420" y="102" fill="#8a8f98">Акумулятор</text><text id="rBatt" x="756" y="102" text-anchor="end" font-size="18" fill="#f2f2f2">24,5 В · 10 Ач</text>
+              <rect x="400" y="130" width="376" height="52" rx="12" fill="#14161a"/>
+              <text x="420" y="162" fill="#8a8f98">Мотор лівий</text><text id="rML" x="756" y="162" text-anchor="end" font-size="18" fill="#f2f2f2">38°C · 4,1 А</text>
+              <rect x="400" y="190" width="376" height="52" rx="12" fill="#14161a"/>
+              <text x="420" y="222" fill="#8a8f98">Мотор правий</text><text id="rMR" x="756" y="222" text-anchor="end" font-size="18" fill="#f2f2f2">41°C · 4,3 А</text>
+              <rect x="400" y="250" width="376" height="52" rx="12" fill="#14161a"/>
+              <text x="420" y="282" fill="#8a8f98">Фари</text><text id="rLights" x="756" y="282" text-anchor="end" font-size="18" fill="#f2f2f2">увімкнено</text>
+              <rect x="400" y="310" width="376" height="52" rx="12" fill="#14161a"/>
+              <text x="420" y="342" fill="#8a8f98">Пульт 2.4G</text><text id="rRemote" x="756" y="342" text-anchor="end" font-size="18" fill="#f2f2f2">не активний</text>
+              <rect x="400" y="370" width="376" height="52" rx="12" fill="#14161a"/>
+              <text x="420" y="402" fill="#8a8f98">CAN</text><text id="rCan" x="756" y="402" text-anchor="end" font-size="18" fill="#3fb950">3 вузли в мережі</text>
+              <text x="400" y="452" fill="#6b7079" font-size="13">Пробіг: <tspan id="rOdo">42,0</tspan> км · поїздка: <tspan id="rTrip">0,0</tspan> км</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 4. CHARGE -->
+        <div class="layer" id="charge">
+          <svg viewBox="0 0 800 480" role="img" aria-label="Зарядка">
+            <image href="assets/car-34.png" x="230" y="34" width="330" height="193"/>
+            <path d="M 548 160 Q 640 175 660 240 L 690 240" fill="none" stroke="#5b6069" stroke-width="4" stroke-linecap="round"/>
+            <rect x="690" y="228" width="30" height="24" rx="5" fill="#3a3d45"/>
+            <text id="chPct" x="400" y="320" text-anchor="middle" font-size="72" font-weight="600" fill="#f2f2f2">62%</text>
+            <text id="chState" x="400" y="352" text-anchor="middle" font-size="16" fill="#8a8f98">заряджається</text>
+            <rect x="220" y="378" width="360" height="22" rx="11" fill="#1f2228"/>
+            <rect id="chBar" x="220" y="378" width="223" height="22" rx="11" fill="#3fb950"/>
+            <rect id="chGlow" x="420" y="378" width="23" height="22" rx="11" fill="#7ee08f"/>
+            <text id="chEta" x="400" y="440" text-anchor="middle" font-size="18" fill="#f2f2f2">до повного ≈ 4 год 45 хв</text>
+            <text id="chVA" x="776" y="40" text-anchor="end" font-size="14" fill="#8a8f98">25,4 В · 0,8 А</text>
+            <text class="clk" x="24" y="40" font-size="18" fill="#f2f2f2">14:32</text>
+          </svg>
+        </div>
+
+        <!-- level overlay -->
+        <div class="layer" id="levelOv" aria-live="polite">
+          <svg viewBox="0 0 800 480" role="img" aria-label="Зміна рівня">
+            <defs><clipPath id="lvClip"><rect x="160" y="64" width="480" height="384"/></clipPath></defs>
+            <rect x="160" y="64" width="480" height="384" fill="#14161a" stroke="#2a2d34" stroke-width="2"/>
+            <g clip-path="url(#lvClip)"><g transform="translate(290 94) scale(1.7)"><g class="lv-char"><use id="lvUse" href="#cheetah"/></g></g></g>
+            <text id="lvName" x="400" y="340" text-anchor="middle" font-size="40" font-weight="600" fill="#f2f2f2">Гепард</text>
+            <text id="lvSub" x="400" y="372" text-anchor="middle" font-size="18" fill="#8a8f98">рівень 3 · до 8 км/год</text>
+            <rect id="lv1" x="334" y="396" width="40" height="10" rx="5" fill="#3a3d45"/>
+            <rect id="lv2" x="380" y="396" width="40" height="10" rx="5" fill="#3a3d45"/>
+            <rect id="lv3" x="426" y="396" width="40" height="10" rx="5" fill="#e5322d"/>
+          </svg>
+        </div>
+
+        <!-- alert overlay -->
+        <div class="layer" id="alertOv" role="alertdialog" aria-labelledby="alTitle">
+          <div class="al-ring pulse" id="alIcon"></div>
+          <div class="al-title" id="alTitle">Мало заряду</div>
+          <div class="al-sub" id="alSub">Час їхати додому на зарядку</div>
+          <button class="scr-btn al-ok" id="alOk">Зрозуміло</button>
+        </div>
+
+        <!-- PIN -->
+        <div class="layer" id="pin">
+          <div>
+            <div class="pin-title">Батьківський режим</div>
+            <div class="pin-sub">Введіть PIN, щоб змінити налаштування</div>
+            <div class="pin-dots" id="pinDots"><span></span><span></span><span></span><span></span></div>
+            <div class="pin-msg" id="pinMsg"></div>
+            <button class="scr-btn pin-cancel" id="pinCancel">Скасувати</button>
+          </div>
+          <div class="pin-pad" id="pinPad">
+            <button class="scr-btn" data-k="1">1</button><button class="scr-btn" data-k="2">2</button><button class="scr-btn" data-k="3">3</button>
+            <button class="scr-btn" data-k="4">4</button><button class="scr-btn" data-k="5">5</button><button class="scr-btn" data-k="6">6</button>
+            <button class="scr-btn" data-k="7">7</button><button class="scr-btn" data-k="8">8</button><button class="scr-btn" data-k="9">9</button>
+            <span></span><button class="scr-btn" data-k="0">0</button><button class="scr-btn" data-k="del" aria-label="Стерти">⌫</button>
+          </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="layer" id="settings">
+          <div class="set-head"><div class="set-title">Налаштування</div><div class="set-actions"><button class="scr-btn" id="setTheme">Тема</button><button class="scr-btn" id="setClose">Закрити</button></div></div>
+          <div class="set-sub">Обмеження швидкості для рівнів</div>
+          <div class="set-row"><svg viewBox="0 0 130 110" aria-hidden="true"><use href="#turtle"/></svg><div class="set-name">Черепаха</div><input type="range" min="1" max="12" step="0.5" id="lim1" aria-label="Ліміт рівня 1"><div class="set-val" id="lim1v"></div></div>
+          <div class="set-row"><svg viewBox="0 0 130 110" aria-hidden="true"><use href="#hare"/></svg><div class="set-name">Зайчик</div><input type="range" min="1" max="12" step="0.5" id="lim2" aria-label="Ліміт рівня 2"><div class="set-val" id="lim2v"></div></div>
+          <div class="set-row"><svg viewBox="0 0 130 110" aria-hidden="true"><use href="#cheetah"/></svg><div class="set-name">Гепард</div><input type="range" min="1" max="12" step="0.5" id="lim3" aria-label="Ліміт рівня 3"><div class="set-val" id="lim3v"></div></div>
+          <div class="set-cards">
+            <div class="set-card"><div class="k">Діаметр колеса</div><div class="v"><button class="scr-btn" id="whMinus" aria-label="Менше">−</button><span id="whVal">18 см</span><button class="scr-btn" id="whPlus" aria-label="Більше">+</button></div></div>
+            <div class="set-card"><div class="k">Яскравість · <span id="brVal">100%</span></div><input type="range" min="30" max="100" step="5" id="bright" aria-label="Яскравість"></div>
+            <div class="set-card"><div class="k">Безпека</div><div class="v"><span>PIN-код</span><button class="scr-btn" id="pinChange" style="width:auto;padding:0 14px;font-size:15px">Змінити</button></div></div>
+          </div>
+          <div class="set-foot" id="setFoot">Автовихід через 30 с без дотиків</div>
+        </div>
+
+        <!-- THEME PICKER -->
+        <div class="layer" id="themes">
+          <div class="set-head"><div class="set-title">Тема приладів</div><button class="scr-btn" id="thBack">Назад</button></div>
+          <div class="set-sub">Вигляд головного екрана. Усі теми однаково легкі для рендера на ESP32-S3.</div>
+          <div class="th-grid" id="thGrid"></div>
+          <div class="set-foot">Автовихід через 30 с без дотиків</div>
+        </div>
+
+        <div id="holdZone" aria-hidden="true"><div class="bar"></div></div>
+        <div class="toast" id="toast"></div>
+      </div>
+    </div>
+  </div>
+  <div class="hint">На екрані: свайп вліво-вправо перемикає «Їзда» ⇄ «Авто». Довгий дотик (1,5 с) на годиннику відкриває батьківський режим, демо-PIN <b>1234</b>. Тема приладів: свайп вгору/вниз на «Їзді», або Налаштування → Тема, або праворуч.</div>
+</div>
+
+<aside>
+  <div class="panel">
+    <h2>Сцени</h2>
+    <div class="scenes" id="scenes"></div>
+  </div>
+  <div class="panel">
+    <h2>Тема приладів</h2>
+    <div class="seg" id="themeSeg"></div>
+  </div>
+  <div class="panel">
+    <h2>Імітація CAN-даних</h2>
+    <div class="ctl"><label for="pedal"><span>Педаль (бажана швидкість)</span><span id="pedalV">4 км/год</span></label><input type="range" id="pedal" min="0" max="12" step="0.5"></div>
+    <div class="ctl"><div class="lbl"><span>Передача</span></div><div class="seg" id="gearSeg"><button data-g="R">R</button><button data-g="N">N</button><button data-g="D">D</button></div></div>
+    <div class="ctl"><div class="lbl"><span>Рівень (перемикають батьки)</span></div><div class="seg" id="lvlSeg"><button data-l="1">1 Черепаха</button><button data-l="2">2 Зайчик</button><button data-l="3">3 Гепард</button></div></div>
+    <div class="ctl"><label for="outT"><span>Температура надворі</span><span id="outV">12°</span></label><input type="range" id="outT" min="-30" max="45" step="1"></div>
+    <div class="ctl"><label for="batt"><span>Заряд</span><span id="battV">78%</span></label><input type="range" id="batt" min="0" max="100" step="1"></div>
+    <div class="ctl"><div class="toggles" id="toggles">
+      <button data-t="lights">Фари</button><button data-t="remote">Пульт батьків</button>
+      <button data-t="charging">Зарядка</button><button data-t="demo">Автодемо</button>
+      <button data-t="fault">Помилка (check)</button><button data-t="allIcons">Усі значки</button><button data-t="outSensor">Датчик надворі</button>
+    </div></div>
+    <div class="ctl"><div class="lbl"><span>Повороти</span></div><div class="seg" id="turnSeg"><button data-n="left">◀ Ліво</button><button data-n="hazard">Аварійка</button><button data-n="right">Право ▶</button><button data-n="off">Вимк.</button></div></div>
+    <div class="ctl"><div class="lbl"><span>Тривоги</span></div><div class="seg">
+      <button class="btn" data-a="lowbat">Мало заряду</button><button class="btn" data-a="overheat">Перегрів</button><button class="btn" data-a="can">Немає CAN</button>
+    </div></div>
+    <button class="btn" id="restart" style="width:100%">Перезапуск із заставкою</button>
+  </div>
+</aside>
+</div>
+
+<section class="spec">
+  <div class="card">
+    <h3>Палітра</h3>
+    <div class="sw"><i style="background:#0b0c0e"></i><span>Фон</span><code>#0b0c0e</code></div>
+    <div class="sw"><i style="background:#14161a"></i><span>Прилад, картка</span><code>#14161a</code></div>
+    <div class="sw"><i style="background:#1f2228"></i><span>Доріжка шкали</span><code>#1f2228</code></div>
+    <div class="sw"><i style="background:#f2f2f2"></i><span>Текст</span><code>#f2f2f2</code></div>
+    <div class="sw"><i style="background:#8a8f98"></i><span>Підписи</span><code>#8a8f98</code></div>
+    <div class="sw"><i style="background:#e5322d"></i><span>Червоний Bambi: швидкість, активне</span><code>#e5322d</code></div>
+    <div class="sw"><i style="background:#3fb950"></i><span>Заряд у нормі</span><code>#3fb950</code></div>
+    <div class="sw"><i style="background:#d29922"></i><span>Попередження, тривога</span><code>#d29922</code></div>
+    <div class="sw"><i style="background:#58a6ff"></i><span>Пульт батьків</span><code>#58a6ff</code></div>
+    <p>Червоний ніколи не означає тривогу, бо це колір самого авто. Усі попередження жовті. Блимають лише покажчики поворотів і кільце повноекранного сповіщення; рухається лише дорога в «Пригоді».</p>
+  </div>
+  <div class="card">
+    <h3>Типографіка: Montserrat</h3>
+    <p style="margin-top:0">Вбудований шрифт LVGL, тож на ESP32 виглядатиме так само.</p>
+    <div class="type-row"><span style="font-size:40px;font-weight:600">4</span><span>швидкість · 110 px · 600</span></div>
+    <div class="type-row"><span style="font-size:26px;font-weight:600">78%</span><span>значення приладів · 34 px · 600</span></div>
+    <div class="type-row"><span style="font-size:18px">Мотор лівий</span><span>підписи, рядки · 16–18 px</span></div>
+    <div class="type-row"><span style="font-size:13px;color:#8a8f98">км запасу</span><span>підписи шкал · 13 px</span></div>
+    <p>Кнопки на екрані ≥ 44 px, на PIN-клавіатурі 108×88 px.</p>
+  </div>
+  <div class="card">
+    <h3>Персонажі: стани</h3>
+    <ul>
+      <li><b>Без анімації:</b> персонаж у верхньому рядку нерухомий (єдиний рух крім поворотів: дорога в «Пригоді», вона ковзає, поки авто їде, у задньому ході в інший бік). Педаль у дитини проста кнопка, тож швидкість майже завжди впирається в ліміт, і будь-який рух, блимання чи «розгін» стрілки крутилися б безперервно. Пропорційний газ є лише з пульта. Єдине виключення: покажчики поворотів.</li>
+      <li><b>Задній хід:</b> персонаж розвертається, стрілка чи дуга стає світло-сірою.</li>
+      <li><b>Заряд &lt; 10%:</b> поруч з'являються нерухомі «z».</li>
+      <li><b>Зміна рівня:</b> новий персонаж одразу з'являється на непрозорій картці посеред екрана на 2 с.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Карта екранів</h3>
+<pre class="map">Заставка (2,4 с): герб із відблиском
+  └→ Їзда (5 тем, свайп ↑↓) ⇄ Радіо ⇄ Авто   свайп ←→
+       ├ рівень з CAN  → картка з персонажем
+       ├ пульт активний → синя смуга згори
+       ├ тривога       → повноекранне вікно
+       └ довгий дотик на годиннику
+            → PIN → Налаштування → Тема (автовихід 30 с)
+Зарядка — замість Їзди, поки підключено зарядку</pre>
+  </div>
+  <div class="card">
+    <h3>Екран «Радіо»</h3>
+    <ul>
+      <li><b>Склад:</b> картка «зараз грає» (логотип, назва, частота, STEREO, RDS, сила сигналу, RDS-текст), кнопки «попередня», «улюблена», «наступна», гучність (−, 10 щаблів, +, mute). Справа вкладки «Усі / Улюблені», «Скан» і список по 5 станцій зі сторінками ▲▼. Верхня смуга (година, повороти, лампи) лишається.</li>
+      <li><b>Скан:</b> кнопка стає «Стоп», звук вимкнено, шкала частоти росте, станції зʼявляються в списку по ходу пошуку. Станцію, якої нема у файлі, видно з RDS-назвою й загальною іконкою антени.</li>
+      <li><b>Улюблені:</b> серце в рядку або велика кнопка під карткою. Список зберігається в NVS за частотою.</li>
+      <li><b>Логотипи:</b> файл станцій і картинки на картці microSD (папка radio/), за частотою. Логотип 40×40 для списку й 112×112 для картки, готові RGB565 (≈3 і ≈25 КБ). Тут це вигадані значки.</li>
+      <li><b>Рендер:</b> список сторінками без прокрутки, кнопки й рядки рівні прямокутники, змінюється лише картка й один рядок. Прокручування списку пальцем не робимо.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Верхня смуга: пріоритет читання</h3>
+    <ul>
+      <li><b>Порядок:</b> швидкість (найбільша цифра теми), заряд, запас ходу, година (32 px), пробіг за сьогодні (24 px). Найменший текст на екрані їзди 16 px.</li>
+      <li><b>Контрольні лампи, як у справжньому авто:</b> видно лише ті, що горять, у фіксованих місцях справа. Фари: зелена. Перегрів мотора від 55 °C: жовта. Перевірити авто (помилка, немає зв'язку): жовта. Керують батьки: синя. Банер «Керують батьки» замінила синя лампа.</li>
+      <li><b>Рівень швидкості:</b> персонаж (черепаха, зайчик, гепард) по центру між стрілками поворотів, у задньому ході розвернутий, при заряді нижче 10% поруч «z». На самих темах персонажа нема, крім того що в «Авто» його замінює фото. Крапок сторінок нема: «Їзда» ⇄ «Авто» перемикає свайп.</li>
+      <li><b>Повороти:</b> зелені стрілки по боках від крапок сторінок, блимають 0,35 с / 0,35 с. Аварійка: блимають обидві. Їх видно на всіх темах.</li>
+    </ul>
+  </div>
+  <div class="card wide">
+    <h3>Теми приладів і вартість рендера</h3>
+    <p style="margin-top:0">Три правила, які тримають ESP32-S3 на стелі дисплея (24 к/с): великі форми запечено в одну непрозору картинку; наживо змінюються лише малі непрозорі області (сегмент, стрілка, цифра); жодних сяйв, тіней і прозорих шарів на великих площах, і нічого не анімується на весь екран. Тому зміна рівня показується непрозорою карткою (≈48% екрана), а не повноекранним вікном: закриття перемальовує лише її площу. Кути в неї прямі навмисно: рушій LVGL не малює те, що під непрозорим об'єктом, лише коли той повністю закриває область, а заокруглений кут цього не робить (заміряно: заокруглена картка відкривалась у 2,4 раза повільніше).</p>
+    <p>Шкала швидкості завжди кінчається на ліміті активного рівня (3, 5 або 8 км/год; у задньому ході не більше 3): повна дуга, повна LED-смуга, стрілка в кінці шкали. На «Аналозі» риска й цифра на кожен км/год, циферблат перемальовується лише при зміні шкали. Окремої мітки ліміту нема, бо ліміт і є кінець шкали.</p>
+    <table class="cost">
+      <tr><th>Тема</th><th>Запечено в картинку</th><th>Малюється наживо</th><th>Кадр у русі (1024×600)</th></tr>
+      <tr><td>Кластер</td><td>кола, риски, доріжки дуг, підписи (≈0,95 МБ)</td><td>три кольорові дуги, цифри</td><td>45–60 тис. пікс., 6–9 мс (заміряно на платі)</td></tr>
+      <tr><td>Спорт</td><td>нічого не треба: усе прямокутники без згладжування</td><td>до 4 сегментів смуги за кадр, цифра ≈237 пікс. заввишки, 10 сегментів заряду в картці</td><td>3–10 тис. пікс., ≈1–4 мс*</td></tr>
+      <tr><td>Аналог</td><td>циферблат із рисками й цифрами (≈0,5 МБ)</td><td>стрілка (товста лінія), цифра, смужка заряду</td><td>15–35 тис. пікс. копіювання запеченого фону плюс тонка лінія, ≈2–5 мс*</td></tr>
+      <tr><td>Пригода</td><td>нічого не треба: тло рівне, усе прямокутники й кола</td><td>бульбашки, цифра, штрихи дороги, смуга запасу</td><td>3–10 тис. пікс., ≈1–4 мс*</td></tr>
+      <tr><td>Авто</td><td>фото авто 400×234 на рівному тлі (≈0,19 МБ, те саме, що на сторінці «Авто»)</td><td>цифра, 10 сегментів заряду, значення запасу</td><td>3–10 тис. пікс., ≈1–4 мс*</td></tr>
+    </table>
+    <p style="margin-bottom:0;color:#8a8f98">* Оцінка за геометрією та виміряною швидкістю плати: непрозорі пікселі ≈24 млн/с, змішування з прозорістю ≈6 млн/с. На платі ці теми ще не перевірялись.</p>
+  </div>
+</section>
+</div>
+
+<script>
+(function(){
+const $ = id => document.getElementById(id);
+const CH = ['turtle','hare','cheetah'];
+const NAMES = ['Черепаха','Зайчик','Гепард'];
+const S = {screen:'splash', page:'drive', theme:'cluster', modal:null, pedal:4, gear:'D', level:2, limits:[3,5,12],
+  battery:78, lights:true, remote:false, charging:false, demo:false, canLost:false, alert:null,
+  tempL:38, tempR:41, wheel:18, brightness:100, pin:'1234', odo:42, trip:1.4, outdoor:12, outSensor:true, turn:'off', fault:false, allIcons:false};
+const THEMES = [
+  {id:'cluster', layer:'drive',       name:'Кластер', hint:'Три циферблати, як у Porsche'},
+  {id:'sport',   layer:'driveSport',  name:'Спорт',   hint:'LED-смуга й велика цифра'},
+  {id:'analog',  layer:'driveAnalog', name:'Аналог',  hint:'Стрілка на класичній шкалі'},
+  {id:'kids',    layer:'driveKids',   name:'Пригода', hint:'Великий персонаж і дорога'},
+  {id:'auto',    layer:'driveAuto',   name:'Авто',    hint:'Фото авто й велика швидкість'},
+];
+let sp = 0, lowShown = false, heatShown = false, lastT = performance.now();
+const fmt = (n,d=1) => n.toFixed(d).replace('.',',');
+
+/* ---------- scaling ---------- */
+const stage = $('stage'), screen = $('screen');
+function fit(){ const s = stage.clientWidth/800; screen.style.transform = `scale(${s})`; stage.style.height = (480*s)+'px'; }
+new ResizeObserver(fit).observe(stage); fit();
+
+/* ---------- layers ---------- */
+function show(id,on){ $(id).classList.toggle('on',!!on); }
+function applyLayers(){
+  const main = S.screen==='main';
+  const onDrive = main && !S.charging && S.page==='drive';
+  show('splash', S.screen==='splash');
+  show('charge', main && S.charging);
+  THEMES.forEach(t=>show(t.layer, onDrive && S.theme===t.id));
+  const onRadio = main && !S.charging && S.page==='radio';
+  show('radio', onRadio);
+  show('chrome', onDrive || onRadio);
+  show("carScr", main && !S.charging && S.page==="car");
+  show('pin', S.modal==='pin');
+  show('settings', S.modal==='settings');
+  show('themes', S.modal==='themes');
+  show('alertOv', main && !!S.alert && !S.modal);
+  const nav = main && !S.charging && !S.modal && !S.alert;
+  $('holdZone').style.display = main && !S.modal && !S.alert ? 'block' : 'none';
+}
+
+/* ---------- splash ---------- */
+function restart(){
+  S.screen='splash'; S.modal=null; S.alert=null;
+  const sp = $('splash'); sp.classList.remove('play'); void sp.offsetWidth; sp.classList.add('play');
+  applyLayers();
+  clearTimeout(restart.t);
+  restart.t = setTimeout(()=>{ S.screen='main'; applyLayers(); }, 2400);
+}
+
+/* ---------- level overlay ---------- */
+let lvTimer;
+function setLevel(n, overlay=true){
+  S.level=n; syncControls();
+  if(!overlay || S.screen!=='main') return;
+  $('lvUse').setAttribute('href','#'+CH[n-1]);
+  $('lvName').textContent = NAMES[n-1];
+  $('lvSub').textContent = `рівень ${n} · до ${fmt(S.limits[n-1],S.limits[n-1]%1?1:0)} км/год`;
+  [1,2,3].forEach(i=>$('lv'+i).setAttribute('fill', i<=n ? '#e5322d' : '#3a3d45'));
+  const ov=$('levelOv'); ov.classList.remove('on'); void ov.offsetWidth; ov.classList.add('on');
+  clearTimeout(lvTimer); lvTimer=setTimeout(()=>ov.classList.remove('on'),2200);
+}
+
+/* ---------- alerts ---------- */
+const ICONS = {
+  lowbat:'<svg width="90" height="90" viewBox="0 0 90 90" aria-hidden="true"><rect x="10" y="26" width="62" height="38" rx="7" fill="none" stroke="#d29922" stroke-width="6"/><rect x="74" y="37" width="7" height="16" rx="2" fill="#d29922"/><rect x="18" y="34" width="12" height="22" rx="2" fill="#d29922"/></svg>',
+  overheat:'<svg width="90" height="90" viewBox="0 0 90 90" aria-hidden="true"><rect x="36" y="10" width="18" height="50" rx="9" fill="none" stroke="#d29922" stroke-width="6"/><circle cx="45" cy="68" r="13" fill="#d29922"/><rect x="42" y="30" width="6" height="34" fill="#d29922"/><path d="M 64 22 h10 M 64 34 h10 M 64 46 h10" stroke="#d29922" stroke-width="5" stroke-linecap="round"/></svg>',
+  can:'<svg width="90" height="90" viewBox="0 0 90 90" aria-hidden="true"><rect x="8" y="34" width="26" height="22" rx="5" fill="none" stroke="#d29922" stroke-width="6"/><rect x="56" y="34" width="26" height="22" rx="5" fill="none" stroke="#d29922" stroke-width="6"/><path d="M 34 45 h6 M 50 45 h6" stroke="#d29922" stroke-width="6" stroke-linecap="round"/><path d="M 36 22 L 54 68" stroke="#d29922" stroke-width="6" stroke-linecap="round"/></svg>'
+};
+const ALERTS = {
+  lowbat:['Мало заряду','Час їхати додому на зарядку'],
+  overheat:['Мотор гарячий','Зроби перерву 10 хвилин'],
+  can:["Немає зв'язку",'Блоки не відповідають. Перевір з’єднання CAN']
+};
+function raise(a){
+  S.alert=a;
+  if(a==='lowbat'){ if(S.battery>9) S.battery=9; lowShown=true; }
+  if(a==='overheat'){ S.tempR=Math.max(S.tempR,72); heatShown=true; }
+  if(a==='can') S.canLost=true;
+  $('alIcon').innerHTML = ICONS[a];
+  $('alTitle').textContent = ALERTS[a][0]; $('alSub').textContent = ALERTS[a][1];
+  syncControls(); applyLayers();
+}
+$('alOk').onclick = ()=>{ if(S.alert==='can') S.canLost=false; S.alert=null; applyLayers(); };
+
+/* ---------- PIN ---------- */
+let entry='', fails=0, lockUntil=0;
+function openPin(){ S.modal='pin'; entry=''; drawPin(); $('pinMsg').textContent=''; applyLayers(); }
+function drawPin(){ [...$('pinDots').children].forEach((d,i)=>d.classList.toggle('f',i<entry.length)); }
+$('pinPad').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b||Date.now()<lockUntil) return;
+  const k=b.dataset.k;
+  if(k==='del') entry=entry.slice(0,-1); else if(entry.length<4) entry+=k;
+  drawPin();
+  if(entry.length===4){
+    if(entry===S.pin){ fails=0; setTimeout(()=>{ openSettings(); },150); }
+    else{
+      fails++; const dots=$('pinDots'); dots.classList.remove('shake'); void dots.offsetWidth; dots.classList.add('shake');
+      setTimeout(()=>{ entry=''; drawPin(); },400);
+      if(fails>=3){ lockUntil=Date.now()+15000; fails=0; lockTick(); } else $('pinMsg').textContent='Невірний PIN';
+    }
+  }
+});
+function lockTick(){
+  const left=Math.ceil((lockUntil-Date.now())/1000);
+  [...$('pinPad').querySelectorAll('button')].forEach(b=>b.disabled=left>0);
+  $('pinMsg').textContent = left>0 ? `Забагато спроб. Зачекайте ${left} с` : '';
+  if(left>0) setTimeout(lockTick,250);
+}
+$('pinCancel').onclick=()=>{ S.modal=null; applyLayers(); };
+
+/* hold to open */
+const hz=$('holdZone'); let holdT=null, holding=false;
+hz.addEventListener('pointerdown',e=>{ e.stopPropagation(); holding=true; hz.classList.add('holding'); holdT=setTimeout(()=>{ endHold(); openPin(); },1500); });
+function endHold(){ holding=false; clearTimeout(holdT); hz.classList.remove('holding'); }
+['pointerup','pointerleave','pointercancel'].forEach(ev=>hz.addEventListener(ev,endHold));
+
+/* ---------- settings ---------- */
+let idle=30, idleTimer=null;
+function openSettings(){ S.modal='settings'; syncSettings(); applyLayers(); resetIdle(); }
+function resetIdle(){ idle=30; $('setFoot').textContent='Автовихід через 30 с без дотиків';
+  clearInterval(idleTimer); idleTimer=setInterval(()=>{ idle--; $('setFoot').textContent=`Автовихід через ${idle} с без дотиків`; if(idle<=0){ closeSettings(); } },1000); }
+function closeSettings(){ clearInterval(idleTimer); S.modal=null; applyLayers(); }
+$('settings').addEventListener('pointerdown',resetIdle);
+$('setClose').onclick=closeSettings;
+$('setTheme').onclick=()=>{ S.modal='themes'; updateThemeCards(); applyLayers(); };
+$('thBack').onclick=()=>{ S.modal='settings'; applyLayers(); };
+$('themes').addEventListener('pointerdown',resetIdle);
+function syncSettings(){
+  [1,2,3].forEach(i=>{ const r=$('lim'+i); r.value=S.limits[i-1]; $('lim'+i+'v').textContent=fmt(S.limits[i-1],S.limits[i-1]%1?1:0)+' км/год'; r.style.setProperty('--p',((S.limits[i-1]-1)/7*100)+'%'); });
+  $('whVal').textContent=S.wheel+' см'; $('bright').value=S.brightness; $('brVal').textContent=S.brightness+'%';
+}
+[1,2,3].forEach(i=>$('lim'+i).addEventListener('input',e=>{
+  const v=+e.target.value; S.limits[i-1]=v;
+  for(let j=i;j<3;j++) if(S.limits[j]<v) S.limits[j]=v;
+  for(let j=i-2;j>=0;j--) if(S.limits[j]>v) S.limits[j]=v;
+  syncSettings();
+}));
+$('whMinus').onclick=()=>{ S.wheel=Math.max(10,S.wheel-1); syncSettings(); };
+$('whPlus').onclick=()=>{ S.wheel=Math.min(30,S.wheel+1); syncSettings(); };
+$('bright').addEventListener('input',e=>{ S.brightness=+e.target.value; screen.style.filter=`brightness(${S.brightness/100})`; syncSettings(); });
+$('pinChange').onclick=()=>toast('Зміна PIN: введіть новий двічі (у прототипі не реалізовано)');
+function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toast.t); toast.t=setTimeout(()=>el.classList.remove('on'),2200); }
+
+/* ---------- swipe ---------- */
+let sx=null, sy=null;
+screen.addEventListener('pointerdown',e=>{ if(S.screen==='main'&&!S.modal&&!S.alert&&!S.charging){ sx=e.clientX; sy=e.clientY; } });
+screen.addEventListener('pointerup',e=>{ if(sx===null||holding) { sx=null; return; } const dx=e.clientX-sx, dy=e.clientY-sy; sx=null;
+  if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)){ const PG=['drive','radio','car'], i=PG.indexOf(S.page); S.page = PG[Math.max(0,Math.min(2,i+(dx<0?1:-1)))]; applyLayers(); }
+  else if(Math.abs(dy)>50 && S.page==='drive'){ cycleTheme(dy<0 ? 1 : -1); } });   /* swipe up = next theme, down = previous */
+function cycleTheme(d){ const i=THEMES.findIndex(t=>t.id===S.theme), n=THEMES[(i+d+THEMES.length)%THEMES.length]; setTheme(n.id); toast('Тема: '+n.name); }
+
+/* ---------- controls ---------- */
+$('pedal').addEventListener('input',e=>{ S.pedal=+e.target.value; syncControls(); });
+$('outT').addEventListener('input',e=>{ S.outdoor=+e.target.value; syncControls(); });
+$('batt').addEventListener('input',e=>{ S.battery=+e.target.value; if(S.battery>15) lowShown=false; syncControls(); });
+$('gearSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ S.gear=b.dataset.g; syncControls(); } });
+$('turnSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ S.turn=b.dataset.n; syncControls(); } });
+$('lvlSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) setLevel(+b.dataset.l); });
+$('toggles').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; const t=b.dataset.t; S[t]=!S[t];
+  if(t==='charging'&&S.charging){ S.gear='N'; } syncControls(); applyLayers(); });
+document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{ if(S.screen!=='main'){ S.screen='main'; } raise(b.dataset.a); });
+$('restart').onclick=restart;
+function syncControls(){
+  $('outT').value=S.outdoor; $('outV').textContent=S.outdoor+'°';
+  $('pedal').value=S.pedal; $('pedalV').textContent=fmt(S.pedal,S.pedal%1?1:0)+' км/год';
+  $('batt').value=Math.round(S.battery); $('battV').textContent=Math.round(S.battery)+'%';
+  [...$('turnSeg').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.n===S.turn));
+  [...$('gearSeg').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.g===S.gear));
+  [...$('lvlSeg').children].forEach(b=>b.setAttribute('aria-pressed',+b.dataset.l===S.level));
+  [...$('toggles').children].forEach(b=>b.setAttribute('aria-pressed',!!S[b.dataset.t]));
+  [...$('themeSeg').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===S.theme));
+  updateThemeCards();
+}
+
+
+/* ---------- radio ----------
+ * Demo data: invented stations and frequencies. On the device the same fields come from /sdcard/radio/stations.json
+ * (frequency -> name, genre, logo file); a station that is not in the file is shown with its RDS name and a generic icon. */
+const GLY={
+  star:'<path d="M20 6l4 8.2 9 1.3-6.5 6.3 1.5 9L20 26.5 12 30.8l1.5-9L7 15.5l9-1.3z"/>',
+  wave:'<path d="M5 20q3.75-10 7.5 0t7.5 0 7.5 0 7.5 0" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/>',
+  bolt:'<path d="M23.5 5L10.5 22h8.5l-3 13 14-18.5h-8.8z"/>',
+  sun:'<circle cx="20" cy="20" r="6.5"/><path d="M20 6v5M20 29v5M6 20h5M29 20h5M10.1 10.1l3.5 3.5M26.4 26.4l3.5 3.5M29.9 10.1l-3.5 3.5M13.6 26.4l-3.5 3.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>',
+  note:'<path d="M16 28V10l13-3v18" fill="none" stroke="#fff" stroke-width="3.2" stroke-linejoin="round"/><circle cx="12.5" cy="28" r="4.5"/><circle cx="25.5" cy="25" r="4.5"/>',
+  leaf:'<path d="M9 31C7 17 16 8 32 8c0 15-9 24-23 23z"/><path d="M10 30L24 16" fill="none" stroke="#0b0c0e" stroke-opacity=".35" stroke-width="2.4" stroke-linecap="round"/>',
+  heart:'<path d="M20 33C9 25 6 19.5 6 15.2A7 7 0 0 1 20 12.5a7 7 0 0 1 14 2.7C34 19.5 31 25 20 33z"/>',
+  moon:'<path d="M24 6a14 14 0 1 0 10 21A12 12 0 0 1 24 6z"/>',
+  news:'<rect x="8" y="9" width="24" height="22" rx="3.5" fill="none" stroke="#fff" stroke-width="3"/><path d="M13 16h14M13 21.5h14M13 27h8" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>',
+  road:'<path d="M14 7L7 33M26 7l7 26" stroke="#fff" stroke-width="3.4" stroke-linecap="round" fill="none"/><path d="M20 9v5M20 18v5M20 27v5" stroke="#fff" stroke-width="3" stroke-linecap="round"/>',
+  ant:'<circle cx="20" cy="15" r="3.2"/><path d="M20 19v15M20 24l-6 10M20 24l6 10M11.5 9a12 12 0 0 0 0 12M28.5 9a12 12 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>'
+};
+const ST=[
+  {f:87.9, n:'Мультик FM',  g:'дитяче',      c:'#e07a2f', m:'sun',  ps:'MULTYK',  rt:'Пісенька про веселого коника',    sig:5, fav:true},
+  {f:89.4, n:'Казка',       g:'дитяче',      c:'#7c5bd6', m:'moon', ps:'KAZKA',   rt:'Казка на ніч: Колобок',           sig:4, fav:true},
+  {f:90.8, n:'Хвиля',       g:'поп',         c:'#1f8fd1', m:'wave', ps:'HVYLYA',  rt:'Ірина Ланська · Літній вітер',    sig:5, fav:true},
+  {f:92.3, n:'Рок-Сад',     g:'рок',         c:'#c23b3b', m:'bolt', ps:'ROKSAD',  rt:'Грім і Блискавка · Дорога',       sig:3},
+  {f:94.1, n:'Лімон FM',    g:'танцювальна', c:'#b7a512', m:'star', ps:'LIMON',   rt:'Dance Hour · Нічний рейс',        sig:4},
+  {f:95.6, n:'Старе кіно',  g:'ретро',       c:'#8a6a45', m:'note', ps:'KINO',    rt:'Мелодії з кінофільмів',           sig:3},
+  {f:97.2, n:'Тиша',        g:'спокійна',    c:'#2b8f70', m:'leaf', ps:'TYSHA',   rt:'Спокійна музика для дороги',      sig:2},
+  {f:98.8, n:'Новини 24',   g:'новини',      c:'#3b5bdb', m:'news', ps:'NEWS24',  rt:'Головне за годину',               sig:5},
+  {f:99.9, n:null, ps:'RADIO_X', g:'немає в списку', sig:2},
+  {f:101.6,n:'Серце',       g:'мелодії',     c:'#d6336c', m:'heart',ps:'SERCE',   rt:'Улюблені мелодії всією родиною',  sig:4, fav:true},
+  {f:103.3,n:'Дорога',      g:'траса',       c:'#4a5159', m:'road', ps:'DOROGA',  rt:'Траса: ситуація на дорогах',      sig:3},
+  {f:104.5,n:null, ps:'FM 104.5', g:'немає в списку', sig:1},
+  {f:106.2,n:null, ps:'ROXY',  g:'немає в списку', sig:2},
+  {f:107.5,n:'Веселка',     g:'дитяче',      c:'#17a398', m:'star', ps:'VESELKA', rt:'Дитяча пісня дня',                sig:3}
+];
+const R={all:ST.slice(), cur:ST[2], tab:'all', page:0, vol:6, mute:false, scan:false, scanF:87.5, timer:null};
+const PER=5, rdF=f=>f.toFixed(1).replace('.',','), rdName=s=>s.n||s.ps;
+const rdList=()=>R.tab==='fav' ? R.all.filter(s=>s.fav) : R.all;
+const rdLogo=(s,px)=>{
+  const g = s.m ? GLY[s.m] : GLY.ant, bg = s.m ? s.c : '#2a2d34';
+  return `<svg style="width:${px}px;height:${px}px" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="${s.m?9:9}" fill="${bg}"/><g fill="${s.m?'#fff':'#8a8f98'}" style="color:${s.m?'#fff':'#8a8f98'}">${g}</g></svg>`;
+};
+const IC={
+  prev:'<rect x="5" y="5" width="3" height="14" rx="1"/><path d="M19.5 5.5v13L9.5 12z"/>',
+  next:'<rect x="16" y="5" width="3" height="14" rx="1"/><path d="M4.5 5.5v13L14.5 12z"/>',
+  heart:'<path d="M12 21C5 16 3 12.5 3 9.5A4.7 4.7 0 0 1 12 7.4a4.7 4.7 0 0 1 9 2.1C21 12.5 19 16 12 21z"/>',
+  spk:'<path d="M3 9.5h4L12.5 5v14L7 14.5H3z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18.2 6.2a8.2 8.2 0 0 1 0 11.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  spkx:'<path d="M3 9.5h4L12.5 5v14L7 14.5H3z"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+  scan:'<circle cx="12" cy="12" r="2.2"/><path d="M7.6 7.6a6.2 6.2 0 0 0 0 8.8M16.4 7.6a6.2 6.2 0 0 1 0 8.8M4.6 4.6a10.4 10.4 0 0 0 0 14.8M19.4 4.6a10.4 10.4 0 0 1 0 14.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  stop:'<rect x="6" y="6" width="12" height="12" rx="2"/>',
+  up:'<path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  dn:'<path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+};
+const ico=(k,px)=>`<svg viewBox="0 0 24 24" ${px?`style="width:${px}px;height:${px}px"`:''} aria-hidden="true">${IC[k]}</svg>`;
+const bars=n=>[0,1,2,3,4].map(i=>`<rect x="${i*9}" y="${20-(6+i*3.5)}" width="6" height="${6+i*3.5}" rx="2" fill="${i<n?'#f2f2f2':'#2a2d34'}"/>`).join('');
+
+function radioRender(){
+  const L=rdList(), pages=Math.max(1,Math.ceil(L.length/PER));
+  R.page=Math.min(R.page,pages-1);
+  const slice=L.slice(R.page*PER,R.page*PER+PER), s=R.cur, scan=R.scan;
+  const favN=R.all.filter(x=>x.fav).length;
+  let h='';
+  /* now playing card */
+  h+=`<div class="a rd-card" style="left:24px;top:80px;width:352px;height:232px"></div>`;
+  h+=`<div class="a" style="left:44px;top:98px;width:112px;height:112px">${scan?rdLogo({},112):rdLogo(s,112)}</div>`;
+  h+=`<div class="a" id="rdName" style="left:172px;top:98px;width:190px;font-size:22px;font-weight:600;line-height:28px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${scan?'Пошук станцій':rdName(s)}</div>`;
+  h+=`<div class="a" id="rdSub" style="left:172px;top:128px;width:190px;font-size:14px;line-height:18px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${scan?`знайдено ${R.all.length}`:`${s.g} · ${s.ps}`}</div>`;
+  h+=`<div class="a" id="rdFreq" style="left:172px;top:150px;font-size:60px;font-weight:600;line-height:64px;white-space:nowrap">${rdF(scan?R.scanF:s.f)}<span style="font-size:18px;font-weight:400;color:var(--muted);margin-left:8px">МГц</span></div>`;
+  if(!scan){
+    h+=`<div class="rd-tag hi" style="left:44px">STEREO</div><div class="rd-tag hi" style="left:126px">RDS</div>`;
+    h+=`<svg class="a" style="left:300px;top:230px;width:44px;height:20px" viewBox="0 0 41 20">${bars(s.sig)}</svg>`;
+  }
+  h+=`<div class="a" style="left:44px;top:262px;width:312px;height:1px;background:var(--line)"></div>`;
+  h+=`<div class="a" style="left:44px;top:272px;width:312px;font-size:16px;line-height:24px;color:${scan?'var(--dim)':'var(--muted)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${scan?'звук вимкнено на час пошуку':'♪ '+(s.rt||'RDS-текст відсутній')}</div>`;
+  /* transport */
+  h+=`<button class="rd-b ${scan?'dis':''}" data-a="prev" style="left:24px;top:324px;width:128px;height:72px" aria-label="Попередня станція">${ico('prev',34)}</button>`;
+  h+=`<button class="rd-b fav ${scan?'dis':''}" data-a="cfav" style="left:160px;top:324px;width:80px;height:72px" aria-label="Улюблена">${ico('heart',36)}</button>`;
+  h+=`<button class="rd-b ${scan?'dis':''}" data-a="next" style="left:248px;top:324px;width:128px;height:72px" aria-label="Наступна станція">${ico('next',34)}</button>`;
+  /* volume */
+  h+=`<button class="rd-b ${R.mute?'on':''}" data-a="mute" style="left:24px;top:416px;width:52px;height:52px" aria-label="Вимкнути звук">${ico(R.mute?'spkx':'spk')}</button>`;
+  h+=`<button class="rd-b" data-a="vm" style="left:84px;top:416px;width:52px;height:52px;font-size:28px" aria-label="Тихіше">−</button>`;
+  h+=`<div class="a" style="left:144px;top:416px;width:176px;height:52px">`+Array.from({length:10},(_,i)=>`<div class="rd-seg ${i<R.vol?'on':''} ${R.mute?'mut':''}" data-a="vol" data-v="${i+1}" style="left:${i*18}px;height:${14+i*4}px"></div>`).join('')+`</div>`;
+  h+=`<button class="rd-b" data-a="vp" style="left:324px;top:416px;width:52px;height:52px;font-size:28px" aria-label="Гучніше">+</button>`;
+  /* list header */
+  h+=`<button class="rd-b ${R.tab==='all'?'on':''}" data-a="tab" data-t="all" style="left:392px;top:80px;width:88px;height:44px">Усі</button>`;
+  h+=`<button class="rd-b ${R.tab==='fav'?'on':''}" data-a="tab" data-t="fav" style="left:488px;top:80px;width:136px;height:44px"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:${R.tab==='fav'?'#fff':'var(--red)'}">${IC.heart}</svg>Улюблені</button>`;
+  h+=`<button class="rd-b ${scan?'on':''}" data-a="scan" style="left:640px;top:80px;width:136px;height:44px">${ico(scan?'stop':'scan',24)}${scan?'Стоп':'Скан'}</button>`;
+  h+=`<div class="a" style="left:392px;top:128px;width:384px;height:4px;border-radius:2px;background:var(--track)"><div id="rdProg" style="width:${scan?(R.scanF-87.5)/20.5*100:0}%;height:4px;border-radius:2px;background:var(--red)"></div></div>`;
+  /* rows */
+  slice.forEach((x,j)=>{
+    h+=`<div class="rd-row ${x===s&&!scan?'on':''}" data-a="tune" data-f="${x.f}" style="top:${138+j*56}px">`
+      +`<div class="lg">${rdLogo(x,40)}</div><div class="nm">${rdName(x)}</div><div class="sb">${x.g}</div><div class="fq">${rdF(x.f)}</div>`
+      +`<button class="hr ${x.fav?'on':''}" data-a="rfav" data-f="${x.f}" aria-label="Улюблена">${ico('heart')}</button></div>`;
+  });
+  if(!slice.length) h+=`<div class="a" style="left:392px;top:200px;width:384px;text-align:center;font-size:17px;line-height:26px;color:var(--muted)">${scan?'Шукаю станції…':'Поки нічого немає.<br>Торкніться ♥ біля станції, щоб додати.'}</div>`;
+  /* footer */
+  h+=`<div class="a" style="left:392px;top:437px;font-size:14px;color:var(--muted)">${R.all.length} станцій · ♥ ${favN}</div>`;
+  h+=`<div class="a" style="left:540px;top:437px;width:64px;text-align:right;font-size:16px;color:var(--text)">${R.page+1} / ${pages}</div>`;
+  h+=`<button class="rd-b ${pages<2||scan?'dis':''}" data-a="pg" data-d="-1" style="left:616px;top:426px;width:72px;height:44px" aria-label="Попередня сторінка">${ico('up',28)}</button>`;
+  h+=`<button class="rd-b ${pages<2||scan?'dis':''}" data-a="pg" data-d="1" style="left:704px;top:426px;width:72px;height:44px" aria-label="Наступна сторінка">${ico('dn',28)}</button>`;
+  $('radio').innerHTML=h;
+}
+function radioTune(s){ R.cur=s; const i=rdList().indexOf(s); if(i>=0) R.page=Math.floor(i/PER); radioRender(); }
+function radioStep(d){ const L=rdList(); if(!L.length) return; let i=L.indexOf(R.cur); i = i<0 ? 0 : (i+d+L.length)%L.length; radioTune(L[i]); }
+function radioScan(){
+  if(R.scan){ clearInterval(R.timer); R.scan=false; radioFinish(); return; }
+  R.scan=true; R.scanF=87.5; R.tab='all'; R.page=0; R.prevAll=R.all; R.all=[]; radioRender();
+  R.timer=setInterval(()=>{
+    R.scanF=Math.min(108,+(R.scanF+0.2).toFixed(1));
+    const hit=R.prevAll.filter(s=>s.f<=R.scanF && !R.all.includes(s));
+    if(hit.length){ R.all.push(...hit); R.page=Math.floor((R.all.length-1)/PER); radioRender(); }
+    else{ const f=$('rdFreq'); if(f) f.firstChild.textContent=rdF(R.scanF); const p=$('rdProg'); if(p) p.style.width=((R.scanF-87.5)/20.5*100)+'%'; }
+    if(R.scanF>=108){ clearInterval(R.timer); R.scan=false; radioFinish(); }
+  },45);
+}
+function radioFinish(){
+  if(!R.all.length) R.all=R.prevAll;
+  R.cur = R.all.includes(R.cur) ? R.cur : R.all[0];
+  const known=R.all.filter(s=>s.m).length;
+  radioTune(R.cur);
+  toast(`Знайдено ${R.all.length} станцій, ${known} з логотипами`);
+}
+$('radio').addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]'); if(!b) return;
+  const a=b.dataset.a, find=()=>R.all.find(s=>s.f===+b.dataset.f);
+  if(a==='prev') radioStep(-1);
+  else if(a==='next') radioStep(1);
+  else if(a==='cfav'){ R.cur.fav=!R.cur.fav; radioRender(); }
+  else if(a==='rfav'){ e.stopPropagation(); const s=find(); s.fav=!s.fav; radioRender(); }
+  else if(a==='tune'){ if(!R.scan) radioTune(find()); }
+  else if(a==='tab'){ R.tab=b.dataset.t; R.page=0; const i=rdList().indexOf(R.cur); if(i>=0) R.page=Math.floor(i/PER); radioRender(); }
+  else if(a==='scan') radioScan();
+  else if(a==='pg'){ R.page=Math.max(0,R.page+(+b.dataset.d)); radioRender(); }
+  else if(a==='mute'){ R.mute=!R.mute; radioRender(); }
+  else if(a==='vm'){ R.vol=Math.max(0,R.vol-1); R.mute=false; radioRender(); }
+  else if(a==='vp'){ R.vol=Math.min(10,R.vol+1); R.mute=false; radioRender(); }
+  else if(a==='vol'){ R.vol=+b.dataset.v; R.mute=false; radioRender(); }
+});
+
+/* ---------- scenes ---------- */
+const base = ()=>Object.assign(S,{modal:null,alert:null,canLost:false,fault:false,turn:'off',charging:false,remote:false,demo:false,page:'drive',screen:'main',gear:'D',lights:true,tempL:38,tempR:41});
+const SCENES = [
+  ['Заставка', ()=>{ restart(); }],
+  ['Їзда', ()=>{ base(); S.pedal=4; S.level=2; S.battery=78; }],
+  ['На ліміті', ()=>{ base(); S.pedal=9; S.level=1; S.battery=64; }],
+  ['Задній хід', ()=>{ base(); S.gear='R'; S.pedal=3; }],
+  ['Пульт батьків', ()=>{ base(); S.remote=true; S.pedal=3; }],
+  ['Зміна рівня', ()=>{ base(); S.pedal=5; applyLayers(); setLevel(S.level%3+1); }],
+  ['Поворот ліворуч', ()=>{ base(); S.turn='left'; S.pedal=3; }],
+  ['Аварійка', ()=>{ base(); S.turn='hazard'; S.pedal=0; S.gear='N'; }],
+  ['Помилка (check)', ()=>{ base(); S.fault=true; S.pedal=3; }],
+  ['Мало заряду', ()=>{ base(); S.pedal=2; raise('lowbat'); }],
+  ['Перегрів', ()=>{ base(); S.pedal=0; raise('overheat'); }],
+  ['Немає CAN', ()=>{ base(); raise('can'); }],
+  ['Радіо', ()=>{ base(); S.page='radio'; S.pedal=3; R.tab='all'; radioRender(); }],
+  ['Радіо: скан', ()=>{ base(); S.page='radio'; S.pedal=0; S.gear='N'; applyLayers(); radioScan(); }],
+  ['Радіо: улюблені', ()=>{ base(); S.page='radio'; S.pedal=3; R.tab='fav'; radioRender(); }],
+  ['Екран авто', ()=>{ base(); S.page='car'; S.pedal=4; }],
+  ['Зарядка', ()=>{ base(); S.charging=true; S.gear='N'; S.battery=62; }],
+  ['PIN', ()=>{ base(); S.pedal=0; S.gear='N'; applyLayers(); openPin(); }],
+  ['Налаштування', ()=>{ base(); S.pedal=0; S.gear='N'; applyLayers(); openSettings(); }],
+  ['Автодемо', ()=>{ base(); S.demo=true; S.battery=Math.max(S.battery,40); }]
+];
+SCENES.forEach(([n,f])=>{ const b=document.createElement('button'); b.className='btn'; b.textContent=n; b.onclick=()=>{ clearTimeout(restart.t); $('splash').classList.remove('play'); f(); syncControls(); applyLayers(); }; $('scenes').appendChild(b); });
+
+/* ---------- themes ----------
+ * Every theme follows the same render rules, they are what keeps the real ESP32-S3 at its 24 fps ceiling:
+ *  1. big static shapes are baked into one opaque bitmap at start-up;
+ *  2. live parts are small, opaque and change in small areas (a segment, a needle, a digit);
+ *  3. no glows, shadows or translucent layers; nothing animates across the whole screen. */
+const SVGNS='http://www.w3.org/2000/svg';
+const el=(tag,attrs,parent)=>{ const e=document.createElementNS(SVGNS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(parent) parent.appendChild(e); return e; };
+const polar=(cx,cy,r,deg)=>{ const a=deg*Math.PI/180; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; };
+const arcPath=(cx,cy,r,a0,a1)=>{ const p0=polar(cx,cy,r,a0), p1=polar(cx,cy,r,a1); return `M ${p0[0].toFixed(1)} ${p0[1].toFixed(1)} A ${r} ${r} 0 ${a1-a0>180?1:0} 1 ${p1[0].toFixed(1)} ${p1[1].toFixed(1)}`; };
+const setText=(e,t)=>{ if(e._t!==t){ e.textContent=t; e._t=t; } };
+const setAttr=(e,k,v)=>{ if(e['_'+k]!==v){ e.setAttribute(k,v); e['_'+k]=v; } };
+
+const charG = p => `<g id="${p}Flip"><g id="${p}Anim"><use id="${p}Use" href="#hare"/>
+  <g id="${p}Zz" opacity="0"><text x="118" y="26" font-size="18" font-weight="600" fill="#8a8f98">z</text><text x="134" y="10" font-size="24" font-weight="600" fill="#8a8f98">z</text></g>
+</g></g>`;
+const chars={};
+function charUpdate(p,c){
+  const st = chars[p] || (chars[p]={href:''});
+  const href='#'+CH[S.level-1];
+  if(href!==st.href){ $(p+'Use').setAttribute('href',href); st.href=href; }
+  $(p+'Zz').setAttribute('opacity', c.sleepy?1:0);
+  $(p+'Flip').classList.toggle('flip', S.gear==='R');
+}
+function gearUpdate(idp,big,small){
+  ['R','N','D'].forEach(g=>{ const e=$(idp+g), on=g===S.gear;
+    setAttr(e,'fill', on ? (g==='D'?'#e5322d':'#f2f2f2') : '#6b7079');
+    setAttr(e,'font-size', on?big:small); setAttr(e,'font-weight', on?600:400); });
+}
+
+/* --- theme: Кластер (three dials) --- */
+function updCluster(c){
+  const lost=c.lost;
+  setArc($('speedArc'), c.frac*100);   /* the arc ends at the effective limit */
+  $('speedArc').setAttribute('stroke', S.gear==='R' ? '#c9ccd3' : '#e5322d');
+  $('speedText').textContent = lost ? '—' : Math.round(c.dSpeed);
+  setArc($('battArc'), lost?0:c.dBatt);
+  $('battArc').setAttribute('stroke', c.low ? '#d29922' : '#3fb950');
+  $('battText').textContent = lost ? '—' : Math.round(c.dBatt)+'%';
+  setArc($('rangeArc'), lost?0:c.dBatt);
+  $('rangeText').textContent = lost ? '—' : fmt(S.battery*0.15);
+  gearUpdate('g',24,20);
+}
+
+/* --- theme: Спорт (LED bar) --- */
+const spSeg=[], spBatt=[];
+function updSport(c){
+  const lost=c.lost, n=Math.round(c.frac*20);   /* the full bar is the effective limit */
+  const col=S.gear==='R'?'#c9ccd3':'#e5322d';
+  spSeg.forEach((r,i)=>{ setAttr(r,'fill', i<n?col:'#1f2228'); });
+  gearUpdate('spg',24,20);
+  setText($('spSpeed'), lost?'—':String(Math.round(c.dSpeed)));
+  const bc=c.low?'#d29922':'#3fb950';
+  spBatt.forEach((r,i)=>{ const on=!lost&&c.dBatt>=i*10+5; setAttr(r,'fill', on?bc:'#1f2228'); });
+  setText($('spBattText'), lost?'—':Math.round(c.dBatt)+'%');
+  setText($('spRange'), lost?'—':fmt(S.battery*0.15));
+}
+
+/* --- theme: Аналог (needle) --- */
+/* the dial is redrawn only when the scale changes (a level change, or the reverse gear's cap): 0..limit, a tick every 0.5 km/h (every 1 above 8), a numeral every 1 (every 2 above 8) */
+let anMax=-1;
+function anScale(max){
+  if(max===anMax) return; anMax=max;
+  const tk=$('anTicks'); tk.innerHTML='';
+  const u = max>8 ? 1 : 0.5;   /* a minor tick every 0.5 km/h up to 8, every 1 above (limits go up to 12) */
+  for(let i=0;i<=Math.round(max/u);i++){
+    const maj=i%2===0, a=150+240*(i*u)/max, p0=polar(400,262,maj?158:166,a), p1=polar(400,262,178,a);
+    el('line',{x1:p0[0].toFixed(1),y1:p0[1].toFixed(1),x2:p1[0].toFixed(1),y2:p1[1].toFixed(1),stroke:maj?'#c9ccd3':'#5b6069','stroke-width':maj?4:2,'stroke-linecap':'round'},tk);
+    if(maj){ const q=polar(400,262,138,a), t=el('text',{x:q[0].toFixed(1),y:q[1].toFixed(1),'text-anchor':'middle','dominant-baseline':'central','font-size':22,'font-weight':500,fill:'#c9ccd3'},tk); t.textContent=Math.round(i*u); }
+  }
+}
+const anSeg=[];
+function updAnalog(c){
+  const lost=c.lost, ncol=S.gear==='R'?'#c9ccd3':'#e5322d';
+  anScale(c.eff);
+  setAttr($('anNeedle'),'transform',`translate(400 262) rotate(${(150+240*c.frac).toFixed(1)})`);
+  setAttr($('anNeedleBody'),'fill',ncol); setAttr($('anHub'),'stroke',ncol);
+  gearUpdate('ang',40,30);
+  setText($('anSpeed'), lost?'—':String(Math.round(c.dSpeed)));
+  setAttr($('anBattText'),'fill', c.low?'#d29922':'#f2f2f2');
+  anSeg.forEach((r,i)=>{ const on=!lost&&c.dBatt>=i*10+5; setAttr(r,'fill', on?(c.low?'#d29922':'#3fb950'):'#1f2228'); });
+  setText($('anBattText'), lost?'—':Math.round(c.dBatt)+'%');
+  setText($('anRange'), lost?'—':fmt(S.battery*0.15));
+}
+
+/* --- theme: Пригода: for a child who cannot read yet: no words; the level is the character, the charge is the bubbles ---
+   Grid: 40 px side margins, four rows: charge (y 72-112), hero zone (character, digit, gear lever on the right, 150-394), road (394-414), range number (y 450). */
+const KD_L=40, KD_R=760;
+const KIDS=()=>Array.from({length:10},(_,i)=>`<circle id="kdB${i}" cx="${KD_L+20+i*60}" cy="92" r="20" fill="${i<8?'#3fb950':'#1f2228'}"/>`).join('')
+  +`<text id="kdBattText" x="${KD_R}" y="104" text-anchor="end" font-size="40" font-weight="600" fill="#f2f2f2">78%</text>`
+  +`<rect x="${KD_R-56}" y="168" width="56" height="196" rx="28" fill="#14161a" stroke="#2a2d34" stroke-width="2"/>`   /* the gear lever's slot, down the right edge */
+  +['R','N','D'].map((g,i)=>`<text id="kdg${g}" x="${KD_R-28}" y="${214+i*66}" text-anchor="middle" font-size="30" fill="#6b7079">${g}</text>`).join('')
+  +`<text id="kdSpeed" x="520" y="330" text-anchor="middle" font-size="170" font-weight="600" fill="#f2f2f2">4</text><text x="520" y="362" text-anchor="middle" font-size="22" fill="#8a8f98">км/год</text>`
+  +`<g id="kdCharPos" transform="translate(110 221) scale(1.7)"><g data-char="kd"></g></g>`
+  +`<line x1="${KD_L}" y1="394" x2="${KD_R}" y2="394" stroke="#2a2d34" stroke-width="3" stroke-linecap="round"/><line id="kdRoad" class="road-anim" x1="${KD_L}" y1="412" x2="${KD_R}" y2="412" stroke="#3a3d45" stroke-width="4" stroke-dasharray="26 34"/>`
+  +`<text x="${KD_R}" y="452" text-anchor="end" font-size="32" font-weight="600" fill="#f2f2f2"><tspan id="kdRange">11,7</tspan><tspan dx="8" font-size="16" font-weight="400" fill="#8a8f98">км запасу</tspan></text>`;
+let kdOy=-1;
+function kidsRender(){
+  const svg=$('kdSvg'); svg.innerHTML=KIDS();
+  svg.querySelectorAll('[data-char]').forEach(g=>{ g.innerHTML=charG(g.dataset.char); });
+  delete chars.kd; kdOy=-1;
+}
+function updKids(c){
+  const lost=c.lost, bc=c.low?'#d29922':'#3fb950';
+  gearUpdate('kdg',40,30);
+  setText($('kdSpeed'), lost?'—':String(Math.round(c.dSpeed)));
+  for(let i=0;i<10;i++){ const on=!lost&&c.dBatt>=i*10+5; setAttr($('kdB'+i),'fill', on?bc:'#1f2228'); }
+  setText($('kdBattText'), lost?'—':Math.round(c.dBatt)+'%');
+  setText($('kdRange'), lost?'—':fmt(S.battery*0.15));
+  const rd=$('kdRoad'), dur=Math.max(0.26,0.9-0.05*c.sp).toFixed(2)+'s', run=c.sp>0.1?'running':'paused', dir=S.gear==='R'?'reverse':'normal';
+  if(rd._d!==dur){ rd.style.animationDuration=dur; rd._d=dur; }
+  if(rd._r!==run){ rd.style.animationPlayState=run; rd._r=run; }
+  if(rd._dir!==dir){ rd.style.animationDirection=dir; rd._dir=dir; }
+  const oy=[238,221,216][S.level-1];   /* the three sprites have their feet at different heights */
+  if(oy!==kdOy){ kdOy=oy; $('kdCharPos').setAttribute('transform',`translate(110 ${oy}) scale(1.7)`); }
+  charUpdate('kd',c);
+}
+/* --- theme: Авто: the same elements in four placements (design review) --- */
+const auCar=(x,y)=>`<image href="assets/car-34.png" x="${x}" y="${y}" width="320" height="187"/>`;
+const auGear=(x,y)=>['R','N','D'].map((g,i)=>`<text id="aug${g}" x="${x+i*34}" y="${y}" text-anchor="middle" font-size="20" fill="#6b7079">${g}</text>`).join('');
+const auSegs=(x,y,w,h,pitch)=>Array.from({length:10},(_,i)=>`<rect id="auS${i}" x="${x+i*pitch}" y="${y}" width="${w}" height="${h}" rx="4" fill="${i<8?'#3fb950':'#1f2228'}"/>`).join('');
+const auLab=(x,y,t,a)=>`<text x="${x}" y="${y}"${a?` text-anchor="${a}"`:''} font-size="16" fill="#8a8f98">${t}</text>`;
+const auSpeed=(x,y)=>`<text id="auSpeed" x="${x}" y="${y}" text-anchor="middle" font-size="170" font-weight="600" fill="#f2f2f2">4</text>`;
+const auSpeedL=(x,y)=>`<text id="auSpeed" x="${x}" y="${y}" text-anchor="middle" font-size="190" font-weight="600" fill="#f2f2f2">4</text>`;
+const auBatt=(x,y,a)=>`<text id="auBattText" x="${x}" y="${y}"${a?` text-anchor="${a}"`:''} font-size="40" font-weight="600" fill="#f2f2f2">78%</text>`;
+const auRangeKm=(x,y,fs,a)=>`<text x="${x}" y="${y}"${a?` text-anchor="${a}"`:''} font-size="${fs}" font-weight="600" fill="#f2f2f2"><tspan id="auRange">11,7</tspan><tspan dx="8" font-size="20" font-weight="400" fill="#8a8f98">км</tspan></text>`;
+const auUnit=(x,y,a)=>`<text x="${x}" y="${y}"${a?` text-anchor="${a}"`:''} font-size="20" fill="#8a8f98">км/год</text>`;
+/* the car on the left, the speed between it and a gear lever on the right edge, a wide charge and range strip along the bottom */
+const auLever=()=>`<rect x="704" y="130" width="56" height="196" rx="28" fill="#14161a" stroke="#2a2d34" stroke-width="2"/>`
+  +['R','N','D'].map((g,i)=>`<text id="aug${g}" x="732" y="${176+i*66}" text-anchor="middle" font-size="30" fill="#6b7079">${g}</text>`).join('');
+const AUTO_B=()=>auCar(24,135)+auLever()
+    +`<text id="auSpeed" x="524" y="282" text-anchor="middle" font-size="190" font-weight="600" fill="#f2f2f2">4</text>`+auUnit(524,314,'middle')
+    +`<line x1="24" y1="362" x2="776" y2="362" stroke="#2a2d34" stroke-width="2"/>`
+    +auLab(24,388,'заряд')+auBatt(24,436)+auSegs(130,410,32,26,36)
+    +auLab(776,388,'запас ходу','end')+auRangeKm(776,440,56,'end');
+let auSeg=[];
+function autoRender(){
+  $('auSvg').innerHTML=AUTO_B();
+  auSeg=Array.from({length:10},(_,i)=>$('auS'+i));
+}
+function updAuto(c){
+  const lost=c.lost, bc=c.low?'#d29922':'#3fb950';
+  gearUpdate('aug',40,30);
+  setText($('auSpeed'), lost?'—':String(Math.round(c.dSpeed)));
+  auSeg.forEach((r,i)=>{ const on=!lost&&c.dBatt>=i*10+5; setAttr(r,'fill', on?bc:'#1f2228'); });
+  setText($('auBattText'), lost?'—':Math.round(c.dBatt)+'%');
+  setText($('auRange'), lost?'—':fmt(S.battery*0.15));
+}
+const UPD={cluster:updCluster, sport:updSport, analog:updAnalog, kids:updKids, auto:updAuto};
+
+/* --- theme picker --- */
+const THUMBS={
+  cluster:()=>`<rect width="800" height="480" fill="#0b0c0e"/><circle cx="114" cy="300" r="100" fill="#14161a"/><path d="M 49.9 337 A 74 74 0 1 1 178.1 337" pathLength="100" fill="none" stroke="#3fb950" stroke-width="14" stroke-linecap="round" stroke-dasharray="78 100"/><circle cx="686" cy="300" r="100" fill="#14161a"/><path d="M 621.9 337 A 74 74 0 1 1 750.1 337" pathLength="100" fill="none" stroke="#c9ccd3" stroke-width="14" stroke-linecap="round" stroke-dasharray="70 100"/><circle cx="400" cy="270" r="200" fill="#14161a" stroke="#2a2d34" stroke-width="3"/><path d="M 257.1 352.5 A 165 165 0 1 1 542.9 352.5" pathLength="100" fill="none" stroke="#e5322d" stroke-width="24" stroke-linecap="round" stroke-dasharray="40 100"/><text x="400" y="300" text-anchor="middle" font-size="130" font-weight="600" fill="#f2f2f2">5</text>`,
+  sport:()=>`<rect width="800" height="480" fill="#0b0c0e"/>`
+    +Array.from({length:20},(_,i)=>`<rect x="${42+i*36}" y="84" width="32" height="46" rx="6" fill="${i<10?'#e5322d':'#1f2228'}"/>`).join('')
+    +`<text x="221" y="346" text-anchor="middle" font-size="190" font-weight="600" fill="#f2f2f2">5</text>`
+    +`<rect x="440" y="150" width="318" height="122" rx="16" fill="#14161a" stroke="#2a2d34" stroke-width="2"/><rect x="440" y="288" width="318" height="122" rx="16" fill="#14161a" stroke="#2a2d34" stroke-width="2"/>`
+    +Array.from({length:10},(_,i)=>`<rect x="${460+i*28}" y="216" width="22" height="34" rx="5" fill="${i<7?'#3fb950':'#1f2228'}"/>`).join('')
+    +`<text x="460" y="386" font-size="56" font-weight="600" fill="#f2f2f2">11,7</text>`,
+  analog:()=>`<rect width="800" height="480" fill="#0b0c0e"/><circle cx="400" cy="262" r="198" fill="#14161a" stroke="#2a2d34" stroke-width="3"/>`
+    +Array.from({length:11},(_,i)=>{ const a=150+24*i, p0=polar(400,262,148,a), p1=polar(400,262,172,a); return `<line x1="${p0[0].toFixed(1)}" y1="${p0[1].toFixed(1)}" x2="${p1[0].toFixed(1)}" y2="${p1[1].toFixed(1)}" stroke="#c9ccd3" stroke-width="6"/>`; }).join('')
+    +`<g transform="translate(400 262) rotate(282)"><path d="M -26 -5 L 0 -9 L 148 -1.6 L 148 1.6 L 0 9 L -26 5 Z" fill="#e5322d"/></g><circle cx="400" cy="262" r="16" fill="#0b0c0e" stroke="#e5322d" stroke-width="4"/>`
+    +`<rect x="62" y="120" width="40" height="280" rx="14" fill="#1f2228"/><rect x="62" y="180" width="40" height="220" rx="14" fill="#3fb950"/>`
+    +`<text x="400" y="352" text-anchor="middle" font-size="64" font-weight="600" fill="#f2f2f2">5</text>`,
+  kids:()=>`<rect width="800" height="480" fill="#0b0c0e"/><line x1="40" y1="364" x2="760" y2="364" stroke="#2a2d34" stroke-width="3"/>`
+    +Array.from({length:10},(_,i)=>`<circle cx="${70+i*38}" cy="88" r="15" fill="${i<7?'#3fb950':'#1f2228'}"/>`).join('')
+    +`<use href="#hare" transform="translate(110 191) scale(1.7)"/><text x="560" y="290" text-anchor="middle" font-size="170" font-weight="600" fill="#f2f2f2">5</text>`
+    +`<rect x="60" y="410" width="540" height="16" rx="8" fill="#1f2228"/><rect x="60" y="410" width="400" height="16" rx="8" fill="#3fb950"/>`
+};
+THUMBS.auto=()=>`<rect width="800" height="480" fill="#0b0c0e"/><image href="assets/car-34.png" x="240" y="214" width="320" height="187"/>`
+  +`<text x="400" y="194" text-anchor="middle" font-size="170" font-weight="600" fill="#f2f2f2">5</text>`
+  +Array.from({length:10},(_,i)=>`<rect x="${30+i*19}" y="336" width="15" height="26" rx="4" fill="${i<7?'#3fb950':'#1f2228'}"/>`).join('')
+  +`<text x="770" y="326" text-anchor="end" font-size="56" font-weight="600" fill="#f2f2f2">11,7</text>`;
+function setTheme(id){ S.theme=id; syncControls(); applyLayers(); }
+function updateThemeCards(){ [...$('thGrid').children].forEach(b=>b.setAttribute('aria-pressed', b.dataset.t===S.theme)); }
+function initThemes(){
+  for(let i=0;i<10;i++) anSeg.push(el('rect',{x:17+i*17,y:246,width:14,height:20,rx:4,fill:'#1f2228'},$('anSegs')));
+  autoRender();
+  document.querySelectorAll('[data-char]').forEach(g=>{ g.innerHTML=charG(g.dataset.char); });
+  kidsRender();
+  for(let i=0;i<20;i++) spSeg.push(el('rect',{x:42+i*36,y:84,width:32,height:46,rx:6,fill:'#1f2228'},$('spBar')));
+  for(let i=0;i<10;i++) spBatt.push(el('rect',{x:460+i*28,y:232,width:22,height:34,rx:5,fill:'#1f2228'},$('spBatt')));
+  THEMES.forEach(t=>{
+    const b=document.createElement('button'); b.className='th-card'; b.dataset.t=t.id;
+    b.innerHTML=`<svg class="th-thumb" viewBox="0 0 800 480" aria-hidden="true">${THUMBS[t.id]()}</svg><div class="th-name">${t.name}</div><div class="th-hint">${t.hint}</div>`;
+    b.onclick=()=>setTheme(t.id); $('thGrid').appendChild(b);
+    const sb=document.createElement('button'); sb.dataset.t=t.id; sb.textContent=t.name; sb.onclick=()=>setTheme(t.id); $('themeSeg').appendChild(sb);
+  });
+}
+
+/* ---------- render loop ---------- */
+let demoT=0;
+function setArc(el,pct){ pct=Math.max(0,Math.min(100,pct)); el.setAttribute('stroke-dasharray',`${pct} 100`); el.style.opacity = pct<0.6 ? 0 : 1; }
+function frame(t){
+  const dt=Math.min(.1,(t-lastT)/1000); lastT=t;
+  if(S.demo && S.screen==='main' && !S.modal && !S.alert){
+    demoT+=dt; S.pedal = Math.max(0, Math.round((4.5+4*Math.sin(demoT*0.45)+1.5*Math.sin(demoT*1.3))*2)/2);
+    if(Math.floor(demoT)%37===20 && !setLevel.done){ setLevel.done=true; setLevel(S.level%3+1); }
+    if(Math.floor(demoT)%37!==20) setLevel.done=false;
+  }
+  const lim = S.limits[S.level-1];
+  const effLim = S.gear==='R' ? Math.min(lim,3) : lim;
+  const moving = S.gear!=='N' && !S.charging && !(S.alert==='overheat');
+  const target = moving ? Math.min(S.pedal,effLim) : 0;
+  const atLimit = moving && S.pedal > effLim+0.05;
+  sp += (target-sp)*Math.min(1,dt*2.5);
+  if(sp<0.02) sp=0;
+
+  if(S.screen==='main'){
+    const km = sp*dt/3600; S.trip+=km; S.odo+=km;
+    if(S.demo) S.battery=Math.max(0,S.battery-sp*dt*0.06);
+    const heat = 30+sp*4.2;
+    S.tempL += (heat-S.tempL)*dt*0.04; S.tempR += (heat+3-S.tempR)*dt*0.04;
+    if(S.charging) S.battery=Math.min(100,S.battery+dt*0.8);
+    if(S.battery<10 && !lowShown && !S.alert && !S.charging){ raise('lowbat'); }
+    if(S.tempR>=70 && !heatShown && !S.alert){ raise('overheat'); }
+    if(S.tempR<55) heatShown=false;
+  }
+
+  const dSpeed=sp, dBatt=S.battery;
+
+  /* drive: shared values first, then only the active theme draws */
+  const lost=S.canLost, low=S.battery<20, sleepy=S.battery<10;
+  const c={lost, low, sleepy, dSpeed, dBatt, eff:effLim, lim, sp, frac: lost||effLim<=0 ? 0 : Math.min(1, dSpeed/effLim),
+    limTxt: S.gear==='R' ? 'задній хід' : S.gear==='N' ? 'нейтраль' : `до ${fmt(lim,lim%1?1:0)} км/год`};
+  if(S.screen==='main' && !S.charging && S.page==='drive') UPD[S.theme](c);
+  /* chrome: telltales light up only when active; turn arrows blink in step (the only continuous motion on the drive screens) */
+  const hot = Math.max(S.tempL,S.tempR) >= 55, all = S.allIcons;   /* "all icons" lights everything at once, arrows steady, to judge placement and spacing */
+  $('tlLights').setAttribute('opacity', (all||S.lights)?1:0);
+  $('tlTemp').setAttribute('opacity', (all||hot)?1:0);
+  $('tlCheck').setAttribute('opacity', (all||lost||S.fault)?1:0);
+  $('tlRemote').setAttribute('opacity', (all||S.remote)?1:0);
+  const blinkOn = Math.floor(t/350)%2===0;
+  $('turnL').setAttribute('opacity', all || (blinkOn && (S.turn==='left'||S.turn==='hazard')) ? 1 : 0);
+  $('turnR').setAttribute('opacity', all || (blinkOn && (S.turn==='right'||S.turn==='hazard')) ? 1 : 0);
+  charUpdate('tb',c); $('tlZ').setAttribute('opacity', (all||c.sleepy)?1:0);
+  $('tripTxt').textContent = fmt(S.trip)+' км';
+  { const t=Math.round(S.outdoor); $('tlOut').textContent=(t>0?'+':t<0?'−':'')+Math.abs(t)+'°'; $('tlOutG').setAttribute('opacity', S.outSensor?1:0); }
+
+  /* car */
+  const bc = low ? '#d29922' : '#3fb950';
+  $('topBattBox').setAttribute('stroke',bc); $('topBatt').setAttribute('fill',bc); $('topBatt').textContent=Math.round(S.battery)+'%';
+  const tc = v => v>=55 ? '#d29922' : '#f2f2f2';
+  $('motL').setAttribute('stroke',tc(S.tempL)); $('motR').setAttribute('stroke',tc(S.tempR));
+  $('tL').textContent=Math.round(S.tempL)+'°'; $('tL').setAttribute('fill',tc(S.tempL));
+  $('tR').textContent=Math.round(S.tempR)+'°'; $('tR').setAttribute('fill',tc(S.tempR));
+  const amps = sp>0.1 ? 0.6+sp*0.55 : 0;
+  $('rBatt').textContent = `${fmt(21+S.battery*0.045)} В · 10 Ач`;
+  $('rML').textContent = `${Math.round(S.tempL)}°C · ${fmt(amps)} А`; $('rML').setAttribute('fill',tc(S.tempL));
+  $('rMR').textContent = `${Math.round(S.tempR)}°C · ${fmt(amps*1.05)} А`; $('rMR').setAttribute('fill',tc(S.tempR));
+  $('rLights').textContent = S.lights?'увімкнено':'вимкнено';
+  $('rRemote').textContent = S.remote?'керують батьки':'не активний'; $('rRemote').setAttribute('fill', S.remote?'#58a6ff':'#f2f2f2');
+  $('rCan').textContent = lost?'немає відповіді':'3 вузли в мережі'; $('rCan').setAttribute('fill', lost?'#d29922':'#3fb950');
+  $('rOdo').textContent=fmt(S.odo); $('rTrip').textContent=fmt(S.trip,2);
+
+  /* charge */
+  const b=S.battery; $('chPct').textContent=Math.round(b)+'%';
+  const bw=Math.max(22,360*b/100); $('chBar').setAttribute('width',bw); $('chGlow').setAttribute('x',220+bw-23);
+  const full=b>=99.5; $('chState').textContent= full?'заряджено':'заряджається'; $('chGlow').style.display= full?'none':'';
+  const mins=Math.round((100-b)/100*12.5*60);
+  $('chEta').textContent = full ? 'можна їхати' : `до повного ≈ ${Math.floor(mins/60)} год ${mins%60} хв`;
+  $('chVA').textContent = full ? `${fmt(21+b*0.045+0.6)} В · 0,0 А` : `${fmt(21+b*0.045+0.6)} В · 0,8 А`;
+
+  if(S.demo) syncControls();
+  requestAnimationFrame(frame);
+}
+
+function clock(){ const d=new Date(); const s=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); document.querySelectorAll('.clk').forEach(e=>e.textContent=s); }
+setInterval(clock,10000); clock();
+
+radioRender();
+initThemes(); syncControls(); restart(); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
