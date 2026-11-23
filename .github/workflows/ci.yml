@@ -79,7 +79,7 @@ jobs:
         if: steps.cppcheck-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          apt-get update && apt-get install -y --no-install-recommends g++
+          apt-get update && apt-get install -y --no-install-recommends g++ cmake ninja-build
           curl -fsSL "https://github.com/danmar/cppcheck/archive/refs/tags/${CPPCHECK_VERSION}.tar.gz" | tar -xz -C /tmp
           cmake -S "/tmp/cppcheck-${CPPCHECK_VERSION}" -B /tmp/cppcheck-build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/cppcheck \
