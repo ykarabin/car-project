@@ -1,16 +1,6 @@
-# Local working material and private tests
+# Local working material
 /.local/
-/tests/
-/firmware/remote-gateway/tests/
 build/
-
-# Keep only the submission documentation and upstream notices
-*.md
-!/README.md
-!/docs/architecture.md
-!/docs/hardware.md
-!/docs/usage.md
-!**/LICENSE.md
 
 # Local assistant configuration
 AGENTS.md
