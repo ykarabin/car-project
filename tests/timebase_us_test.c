@@ -14,9 +14,18 @@ uint32_t HAL_GetTick(void)
     assert(s_mask == 1U);
     return s_tick;
 }
-uint32_t __get_PRIMASK(void) { return s_mask; }
-void __disable_irq(void) { s_mask = 1U; }
-void __set_PRIMASK(uint32_t mask) { s_mask = mask; }
+uint32_t __get_PRIMASK(void)
+{
+    return s_mask;
+}
+void __disable_irq(void)
+{
+    s_mask = 1U;
+}
+void __set_PRIMASK(uint32_t mask)
+{
+    s_mask = mask;
+}
 
 int main(void)
 {

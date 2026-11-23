@@ -24,7 +24,10 @@ static bool s_accept = true;
 static char s_output[16384];
 static size_t s_output_used;
 
-uint32_t HAL_GetTick(void) { return s_now; }
+uint32_t HAL_GetTick(void)
+{
+    return s_now;
+}
 
 void SEGGER_RTT_Init(void)
 {
@@ -47,8 +50,8 @@ unsigned SEGGER_RTT_Write(unsigned channel, const void *bytes, unsigned length)
     return length;
 }
 
-QueueHandle_t xQueueCreateStatic(UBaseType_t length, UBaseType_t size,
-                                 uint8_t *storage, StaticQueue_t *queue)
+QueueHandle_t xQueueCreateStatic(UBaseType_t length, UBaseType_t size, uint8_t *storage,
+                                 StaticQueue_t *queue)
 {
     assert(!s_consumer && length == VEHICLE_LOG_QUEUE_LENGTH);
     if (s_queue_fail) {
@@ -59,8 +62,8 @@ QueueHandle_t xQueueCreateStatic(UBaseType_t length, UBaseType_t size,
 }
 
 TaskHandle_t xTaskCreateStatic(TaskFunction_t entry, const char *name, uint32_t words,
-                              void *argument, UBaseType_t priority, StackType_t *stack,
-                              StaticTask_t *control)
+                               void *argument, UBaseType_t priority, StackType_t *stack,
+                               StaticTask_t *control)
 {
     ++s_task_creates;
     assert(entry != NULL && strcmp(name, "rttLog") == 0);
@@ -132,21 +135,26 @@ static void test_static_start_and_failure(void)
 static void test_copied_snapshot_and_capture_timestamp(void)
 {
     s_now = 123U;
-    vehicle_log_message_t message = {
-        .kind = VEHICLE_LOG_STATUS,
-        .data.status = {.remote_state = "OK", .drive_mode = 2U, .drive_state = "TRACK",
-                        .steering_state = "MOVE", .calibration = {55U, 3612U, 552U},
-                        .raw = 55U, .position_valid = true, .speed_valid = true,
-                        .measured_mm_s = 1111, .target_mm_s = 1666,
-                        .drive_pwm = 250, .steering_pwm = -120}
-    };
+    vehicle_log_message_t message = {.kind = VEHICLE_LOG_STATUS,
+                                     .data.status = {.remote_state = "OK",
+                                                     .drive_mode = 2U,
+                                                     .drive_state = "TRACK",
+                                                     .steering_state = "MOVE",
+                                                     .calibration = {55U, 3612U, 552U},
+                                                     .raw = 55U,
+                                                     .position_valid = true,
+                                                     .speed_valid = true,
+                                                     .measured_mm_s = 1111,
+                                                     .target_mm_s = 1666,
+                                                     .drive_pwm = 250,
+                                                     .steering_pwm = -120}};
     assert(vehicle_log_publish(&message));
     message.data.status = (vehicle_log_status_t){0}; /* Source lifetime ends. */
     assert(s_writes == 0U);
     s_now = 9000U;
     drain();
-    assert(strcmp(s_output,
-        "[123] STAT RC=OK M=2 | DRIVE TRACK v=4.0kmh target=6.0kmh pwm=25% | STEER MOVE pos=0/1000 pwm=-12%\r\n") == 0);
+    assert(strcmp(s_output, "[123] STAT RC=OK M=2 | DRIVE TRACK v=4.0kmh target=6.0kmh pwm=25% | "
+                            "STEER MOVE pos=0/1000 pwm=-12%\r\n") == 0);
 }
 
 static void test_fifo_full_never_waits_or_retries(void)
@@ -155,14 +163,12 @@ static void test_fifo_full_never_waits_or_retries(void)
     const unsigned receives = s_receives;
     for (uint32_t i = 0U; i < VEHICLE_LOG_QUEUE_LENGTH; ++i) {
         s_now = i;
-        assert(vehicle_log_publish(&(const vehicle_log_message_t){
-            .kind = VEHICLE_LOG_CAL_CENTER, .data.raw = (uint16_t)i
-        }));
+        assert(vehicle_log_publish(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_CAL_CENTER,
+                                                                  .data.raw = (uint16_t)i}));
     }
     const unsigned sent = s_sends;
-    assert(!vehicle_log_publish(&(const vehicle_log_message_t){
-        .kind = VEHICLE_LOG_TEXT, .data.text = "must be dropped"
-    }));
+    assert(!vehicle_log_publish(
+        &(const vehicle_log_message_t){.kind = VEHICLE_LOG_TEXT, .data.text = "must be dropped"}));
     assert(s_sends == sent + 1U && s_writes == before && s_receives == receives);
     const size_t start = s_output_used;
     s_now = 50000U;
@@ -171,8 +177,8 @@ static void test_fifo_full_never_waits_or_retries(void)
     const char *cursor = s_output + start;
     for (uint32_t i = 0U; i < VEHICLE_LOG_QUEUE_LENGTH; ++i) {
         char expected[128];
-        (void)snprintf(expected, sizeof(expected), "[%u] CAL CENTER | raw=%u; next: left, right\r\n",
-                       (unsigned)i, (unsigned)i);
+        (void)snprintf(expected, sizeof(expected),
+                       "[%u] CAL CENTER | raw=%u; next: left, right\r\n", (unsigned)i, (unsigned)i);
         const size_t length = strlen(expected);
         assert(strncmp(cursor, expected, length) == 0);
         cursor += length;
@@ -199,44 +205,69 @@ static void test_events_and_special_status_formats(void)
     check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_CONFIG},
           "CONFIG M1=1111mm/s M2=1666mm/s M3=MAX steer_max=70%");
     check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_CAL_STATUS,
-          .data.cal_status = {.saved = true, .flash_available = true, .calibration = {55U, 3612U, 552U}}},
+                                         .data.cal_status = {.saved = true,
+                                                             .flash_available = true,
+                                                             .calibration = {55U, 3612U, 552U}}},
           "CAL STATUS | mode=NORMAL saved=1 flash=1 center=55 left=3612 right=552");
-    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_CAL_SAVED, .data.calibration = {55U, 3612U, 552U}},
+    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_CAL_SAVED,
+                                         .data.calibration = {55U, 3612U, 552U}},
           "CAL SAVED | center=55 left=3612 right=552; working margin=3%");
-    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_CAL_LEFT, .data.raw = 3612U}, "CAL LEFT | raw=3612");
-    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_CAL_RIGHT, .data.raw = 552U}, "CAL RIGHT | raw=552");
-    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_STEER_RELEASE, .data.text = "CENTERED"},
-          "EVENT STEER_RELEASE CENTERED");
-    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_MOTOR_FAULT, .data.motor_faults = MOTOR_FAULT_LEFT},
+    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_CAL_LEFT, .data.raw = 3612U},
+          "CAL LEFT | raw=3612");
+    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_CAL_RIGHT, .data.raw = 552U},
+          "CAL RIGHT | raw=552");
+    check(
+        &(const vehicle_log_message_t){.kind = VEHICLE_LOG_STEER_RELEASE, .data.text = "CENTERED"},
+        "EVENT STEER_RELEASE CENTERED");
+    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_MOTOR_FAULT,
+                                         .data.motor_faults = MOTOR_FAULT_LEFT},
           "MOTOR_FLT LATCHED | mask=0x01 left=1 right=0 steering=0");
     check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_MOTOR_FAULT_FIRST,
-          .data.motor_first = {.first = 1U, .slp_high = 3U, .flt_low = 1U,
-                              .pending = 2U, .at_ms = 123U, .wake_age_ms = 1U, .wake_mask = 3U}},
-          "MOTOR_FLT_FIRST | first=0x01 slp=0x03 low=0x01 pending=0x02 at=123ms wake_age=1ms wake=0x03");
-    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_FEEDBACK,
-          .data.feedback = {.ready = false, .steering = "STALE", .right = "OK"}},
-          "WARN FEEDBACK steering=STALE right=OK");
-    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_UART,
-          .data.uart = {.hal_errors = 1U, .noise = 1U, .dropped = 2U}},
-          "WARN UART hal=1 ne=1 ore=0 fe=0 pe=0 invalid=0 gap=0 rearm=0 fifo_lost=2");
+                                         .data.motor_first = {.first = 1U,
+                                                              .slp_high = 3U,
+                                                              .flt_low = 1U,
+                                                              .pending = 2U,
+                                                              .at_ms = 123U,
+                                                              .wake_age_ms = 1U,
+                                                              .wake_mask = 3U}},
+          "MOTOR_FLT_FIRST | first=0x01 slp=0x03 low=0x01 pending=0x02 at=123ms wake_age=1ms "
+          "wake=0x03");
+    check(
+        &(const vehicle_log_message_t){
+            .kind = VEHICLE_LOG_FEEDBACK,
+            .data.feedback = {.ready = false, .steering = "STALE", .right = "OK"}},
+        "WARN FEEDBACK steering=STALE right=OK");
+    check(
+        &(const vehicle_log_message_t){.kind = VEHICLE_LOG_UART,
+                                       .data.uart = {.hal_errors = 1U, .noise = 1U, .dropped = 2U}},
+        "WARN UART hal=1 ne=1 ore=0 fe=0 pe=0 invalid=0 gap=0 rearm=0 fifo_lost=2");
+    check(
+        &(const vehicle_log_message_t){
+            .kind = VEHICLE_LOG_STATUS,
+            .data.status = {.remote_state = "OK", .drive_mode = 3U, .motor_faults = 1U}},
+        "STAT RC=OK M=3 | MOTOR BLOCKED fault=0x01");
+    check(
+        &(const vehicle_log_message_t){
+            .kind = VEHICLE_LOG_STATUS,
+            .data.status = {.remote_state = "OK", .drive_mode = 1U, .cal_stage = BOARD_CAL_CENTER}},
+        "STAT RC=OK M=1 | CAL CENTER pos=-- rear=OFF");
     check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_STATUS,
-          .data.status = {.remote_state = "OK", .drive_mode = 3U, .motor_faults = 1U}},
-          "STAT RC=OK M=3 | MOTOR BLOCKED fault=0x01");
-    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_STATUS,
-          .data.status = {.remote_state = "OK", .drive_mode = 1U, .cal_stage = BOARD_CAL_CENTER}},
-          "STAT RC=OK M=1 | CAL CENTER pos=-- rear=OFF");
-    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_STATUS,
-          .data.status = {.remote_state = "STALE", .drive_mode = 3U, .drive_state = "DISABLED",
-                          .steering_state = "OFF", .full_power = true}},
+                                         .data.status = {.remote_state = "STALE",
+                                                         .drive_mode = 3U,
+                                                         .drive_state = "DISABLED",
+                                                         .steering_state = "OFF",
+                                                         .full_power = true}},
           "STAT RC=STALE M=3 | DRIVE DISABLED v=--kmh target=MAX pwm=0% | STEER OFF pos=-- pwm=0%");
 }
 
 static void test_wrap_and_disconnected_probe(void)
 {
     s_now = UINT32_MAX;
-    assert(vehicle_log_publish(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_REMOTE, .data.text = "OK"}));
+    assert(vehicle_log_publish(
+        &(const vehicle_log_message_t){.kind = VEHICLE_LOG_REMOTE, .data.text = "OK"}));
     s_now = 0U;
-    assert(vehicle_log_publish(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_REMOTE, .data.text = "STALE"}));
+    assert(vehicle_log_publish(
+        &(const vehicle_log_message_t){.kind = VEHICLE_LOG_REMOTE, .data.text = "STALE"}));
     const size_t start = s_output_used;
     s_now = 100U;
     drain();

@@ -5,7 +5,8 @@
 #include "remote_input.h"
 #include "remote_command_monitor.h"
 
-static bool deliver(remote_command_monitor_t *monitor, const remote_command_t *command, uint32_t time)
+static bool deliver(remote_command_monitor_t *monitor, const remote_command_t *command,
+                    uint32_t time)
 {
     char line[REMOTE_LINE_SIZE];
     const int length = remote_command_format(line, sizeof(line), command);
@@ -13,8 +14,11 @@ static bool deliver(remote_command_monitor_t *monitor, const remote_command_t *c
     remote_parser_t parser = {0};
     remote_command_t decoded;
     for (int i = 0; i < length; ++i) {
-        const remote_parse_result_t result = remote_parser_push(&parser, (uint8_t)line[i], &decoded);
-        if (result == REMOTE_PARSE_COMMAND) return remote_command_monitor_accept(monitor, &decoded, time);
+        const remote_parse_result_t result =
+            remote_parser_push(&parser, (uint8_t)line[i], &decoded);
+        if (result == REMOTE_PARSE_COMMAND) {
+            return remote_command_monitor_accept(monitor, &decoded, time);
+        }
         assert(result == REMOTE_PARSE_NONE);
     }
     assert(false);
@@ -33,20 +37,18 @@ static void test_gateway_input_and_startup_errors(void)
     for (size_t i = 0U; i < sizeof(modes); ++i) {
         const uint8_t mode = remote_drive_mode(mode_channels[i]);
         assert(mode == modes[i]);
-        const remote_command_t command = remote_command_from_input(true, -1000, 1000,
-                                                                   mode, (uint8_t)i);
+        const remote_command_t command =
+            remote_command_from_input(true, -1000, 1000, mode, (uint8_t)i);
         assert(command.drive_mode == modes[i] && command.status == REMOTE_STATUS_OK);
         assert(deliver(&monitor, &command, (uint32_t)i));
         assert(monitor.good_command.steering == -1000 && monitor.good_command.throttle == 1000);
     }
-    const remote_command_t errors[] = {
-        remote_command_from_input(false, 500, 500, 3U, 20U),
-        remote_command_from_input(true, -1001, 0, 1U, 21U),
-        remote_command_from_input(true, 0, 1001, 1U, 22U),
-        remote_command_from_input(true, 0, 0, 0U, 23U),
-        remote_command_from_input(true, 0, 0, 4U, 24U),
-        remote_command_from_input(true, 0, 0, UINT8_MAX, 25U)
-    };
+    const remote_command_t errors[] = {remote_command_from_input(false, 500, 500, 3U, 20U),
+                                       remote_command_from_input(true, -1001, 0, 1U, 21U),
+                                       remote_command_from_input(true, 0, 1001, 1U, 22U),
+                                       remote_command_from_input(true, 0, 0, 0U, 23U),
+                                       remote_command_from_input(true, 0, 0, 4U, 24U),
+                                       remote_command_from_input(true, 0, 0, UINT8_MAX, 25U)};
     for (size_t i = 0U; i < sizeof(errors) / sizeof(errors[0]); ++i) {
         remote_command_monitor_init(&monitor);
         assert(errors[i].status == REMOTE_STATUS_ERROR);

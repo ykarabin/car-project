@@ -12,7 +12,8 @@ _Static_assert(STEERING_CONTROL_START_COUNTS > STEERING_CONTROL_STOP_COUNTS, "Hy
 _Static_assert(STEERING_CONTROL_KP > 0, "Positive feedback gain");
 _Static_assert(STEERING_CONTROL_PWM_STEP > 0, "Positive output rate");
 _Static_assert(STEERING_CONTROL_MAX_GAP_MS > STEERING_CONTROL_PERIOD_MS, "Update time bounds");
-_Static_assert(STEERING_CONTROL_FEEDBACK_GRACE_MS < STEERING_CONTROL_MAX_GAP_MS, "Feedback grace bound");
+_Static_assert(STEERING_CONTROL_FEEDBACK_GRACE_MS < STEERING_CONTROL_MAX_GAP_MS,
+               "Feedback grace bound");
 
 static int32_t coordinate(const steering_controller_t *controller, uint16_t raw)
 {
@@ -63,11 +64,10 @@ void steering_controller_stop(steering_controller_t *controller)
     }
 }
 
-int16_t steering_controller_update(steering_controller_t *controller, int16_t request,
-                                   uint16_t raw, bool feedback_valid, uint32_t now_ms)
+int16_t steering_controller_update(steering_controller_t *controller, int16_t request, uint16_t raw,
+                                   bool feedback_valid, uint32_t now_ms)
 {
-    if ((controller == NULL) || !controller->calibrated ||
-        (request < -1000) || (request > 1000)) {
+    if ((controller == NULL) || !controller->calibrated || (request < -1000) || (request > 1000)) {
         steering_controller_stop(controller);
         return 0;
     }
@@ -81,16 +81,15 @@ int16_t steering_controller_update(steering_controller_t *controller, int16_t re
         }
         /* Reduce PWM during feedback loss. */
         if (elapsed >= STEERING_CONTROL_PERIOD_MS) {
-            const int32_t step = (int32_t)((STEERING_CONTROL_PWM_STEP * elapsed) /
-                                          STEERING_CONTROL_PERIOD_MS);
+            const int32_t step =
+                (int32_t)((STEERING_CONTROL_PWM_STEP * elapsed) / STEERING_CONTROL_PERIOD_MS);
             controller->pwm = (int16_t)approach(controller->pwm, 0, step);
             controller->updated_at_ms = now_ms;
         }
         return controller->pwm;
     }
     controller->feedback_at_ms = now_ms;
-    if ((request >= -VEHICLE_STICK_DEADBAND) &&
-        (request <= VEHICLE_STICK_DEADBAND)) {
+    if ((request >= -VEHICLE_STICK_DEADBAND) && (request <= VEHICLE_STICK_DEADBAND)) {
         request = 0;
     }
     if (!steering_calibration_target(&controller->calibration, request, &controller->target_raw)) {

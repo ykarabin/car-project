@@ -31,7 +31,9 @@ _Noreturn void test_abort_error(esp_err_t error)
 void test_log(bool warn, const char *tag, const char *format, ...)
 {
     assert(strcmp(tag, "elrs") == 0);
-    if (!warn) return;
+    if (!warn) {
+        return;
+    }
     assert(warnings == 0U || now - last_warning >= INT64_C(1000000));
     last_warning = now;
     ++warnings;
@@ -40,7 +42,10 @@ void test_log(bool warn, const char *tag, const char *format, ...)
     (void)vsnprintf(warning, sizeof(warning), format, args);
     va_end(args);
 }
-int64_t esp_timer_get_time(void) { return now; }
+int64_t esp_timer_get_time(void)
+{
+    return now;
+}
 esp_err_t uart_param_config(int uart, const uart_config_t *config)
 {
     assert(uart == UART_NUM_1 && config->baud_rate == 420000);
@@ -48,7 +53,9 @@ esp_err_t uart_param_config(int uart, const uart_config_t *config)
 }
 esp_err_t uart_set_pin(int uart, int tx, int rx, int rts, int cts)
 {
-    (void)tx; (void)rts; (void)cts;
+    (void)tx;
+    (void)rts;
+    (void)cts;
     assert(uart == UART_NUM_1 && rx == CONFIG_ELRS_RX_GPIO);
     return ESP_OK;
 }
@@ -59,27 +66,49 @@ esp_err_t gpio_set_pull_mode(int pin, int mode)
 }
 esp_err_t uart_driver_install(int uart, int rx, int tx, int length, QueueHandle_t *queue, int flags)
 {
-    (void)rx; (void)tx; (void)length; (void)flags;
+    (void)rx;
+    (void)tx;
+    (void)length;
+    (void)flags;
     assert(uart == UART_NUM_1);
     *queue = &uart_queue;
     return ESP_OK;
 }
-esp_err_t uart_driver_delete(int uart) { (void)uart; assert(false); return ESP_FAIL; }
-BaseType_t xTaskCreate(TaskFunction_t task, const char *name, uint32_t stack,
-                       void *argument, UBaseType_t priority, void *handle)
+esp_err_t uart_driver_delete(int uart)
 {
-    (void)name; (void)stack; (void)argument; (void)priority; (void)handle;
+    (void)uart;
+    assert(false);
+    return ESP_FAIL;
+}
+BaseType_t xTaskCreate(TaskFunction_t task, const char *name, uint32_t stack, void *argument,
+                       UBaseType_t priority, void *handle)
+{
+    (void)name;
+    (void)stack;
+    (void)argument;
+    (void)priority;
+    (void)handle;
     receiver = task;
     return pdPASS;
 }
-QueueHandle_t xQueueCreateStatic(UBaseType_t length, size_t size, uint8_t *storage, StaticQueue_t *control)
+QueueHandle_t xQueueCreateStatic(UBaseType_t length, size_t size, uint8_t *storage,
+                                 StaticQueue_t *control)
 {
-    (void)storage; (void)control;
+    (void)storage;
+    (void)control;
     assert(length == 1U && size == sizeof(latest));
     return &sample_queue;
 }
-void vQueueDelete(QueueHandle_t queue) { (void)queue; assert(false); }
-BaseType_t xQueueReset(QueueHandle_t queue) { assert(queue == &uart_queue); return pdPASS; }
+void vQueueDelete(QueueHandle_t queue)
+{
+    (void)queue;
+    assert(false);
+}
+BaseType_t xQueueReset(QueueHandle_t queue)
+{
+    assert(queue == &uart_queue);
+    return pdPASS;
+}
 BaseType_t xQueuePeek(QueueHandle_t queue, void *item, TickType_t ticks)
 {
     (void)ticks;
@@ -90,8 +119,12 @@ BaseType_t xQueuePeek(QueueHandle_t queue, void *item, TickType_t ticks)
 BaseType_t xQueueReceive(QueueHandle_t queue, void *item, TickType_t ticks)
 {
     assert(queue == &uart_queue);
-    if (ticks == 0U) return pdFALSE;
-    if (poll_count == 240U) longjmp(done, 1);
+    if (ticks == 0U) {
+        return pdFALSE;
+    }
+    if (poll_count == 240U) {
+        longjmp(done, 1);
+    }
     step = poll_count++;
     now += step == 17U ? 50000 : 10000;
     read_count = 0U;
@@ -103,8 +136,8 @@ BaseType_t xQueueReceive(QueueHandle_t queue, void *item, TickType_t ticks)
 }
 static bool parse_step(void)
 {
-    return step == 0U || step == 4U || step == 7U || step == 8U || step == 11U ||
-           step == 12U || step == 14U || step == 16U || step == 18U || step == 19U || step >= 133U;
+    return step == 0U || step == 4U || step == 7U || step == 8U || step == 11U || step == 12U ||
+           step == 14U || step == 16U || step == 18U || step == 19U || step >= 133U;
 }
 esp_err_t uart_get_buffered_data_len(int uart, size_t *length)
 {
@@ -116,16 +149,21 @@ esp_err_t uart_get_buffered_data_len(int uart, size_t *length)
 esp_err_t uart_flush_input(int uart)
 {
     assert(uart == UART_NUM_1);
-    assert((step >= 1U && step <= 3U) || step == 6U || step == 9U || step == 10U ||
-           step == 13U || step == 15U || step == 17U || (step >= 21U && step <= 132U));
-    return step == 1U || step == 2U || step == 9U || (step >= 21U && step <= 131U) ? ESP_FAIL : ESP_OK;
+    assert((step >= 1U && step <= 3U) || step == 6U || step == 9U || step == 10U || step == 13U ||
+           step == 15U || step == 17U || (step >= 21U && step <= 132U));
+    return step == 1U || step == 2U || step == 9U || (step >= 21U && step <= 131U) ? ESP_FAIL :
+                                                                                     ESP_OK;
 }
 int uart_read_bytes(int uart, void *buffer, uint32_t length, TickType_t ticks)
 {
     (void)ticks;
     assert(uart == UART_NUM_1 && parse_step());
-    if (step == 12U) return 0;
-    if (step == 8U && read_count++ != 0U) return -1;
+    if (step == 12U) {
+        return 0;
+    }
+    if (step == 8U && read_count++ != 0U) {
+        return -1;
+    }
     const size_t count = step == 8U ? 13U : sizeof(frame);
     assert(count <= length);
     (void)memcpy(buffer, frame, count);
@@ -135,7 +173,9 @@ BaseType_t xQueueOverwrite(QueueHandle_t queue, const void *item)
 {
     assert(queue == &sample_queue);
     latest = *(const elrs_sample_t *)item;
-    if (!running) return pdPASS;
+    if (!running) {
+        return pdPASS;
+    }
     ++published;
     const bool valid = parse_step() && step != 8U && step != 12U;
     assert(latest.valid == valid);
@@ -147,12 +187,16 @@ BaseType_t xQueueOverwrite(QueueHandle_t queue, const void *item)
             assert(latest.normalized[i] == 0 && latest.raw[i] == 0U);
         }
     }
-    if (step >= 132U) assert(latest.uart_errors == 121U);
+    if (step >= 132U) {
+        assert(latest.uart_errors == 121U);
+    }
     return pdPASS;
 }
 static void make_frame(void)
 {
-    frame[0] = 0xC8U; frame[1] = 24U; frame[2] = 0x16U;
+    frame[0] = 0xC8U;
+    frame[1] = 24U;
+    frame[2] = 0x16U;
     for (size_t ch = 0U; ch < ELRS_CHANNEL_COUNT; ++ch) {
         const uint16_t value = ch == 1U ? 1811U : 992U;
         for (size_t bit = 0U; bit < 11U; ++bit) {
@@ -165,7 +209,9 @@ static void make_frame(void)
         crc ^= frame[i];
         for (size_t bit = 0U; bit < 8U; ++bit) {
             crc <<= 1U;
-            if ((crc & 0x100U) != 0U) crc ^= 0x1D5U;
+            if ((crc & 0x100U) != 0U) {
+                crc ^= 0x1D5U;
+            }
         }
     }
     frame[25] = (uint8_t)crc;
@@ -175,7 +221,9 @@ int main(void)
     make_frame();
     assert(elrs_start(7U) == ESP_OK && receiver != NULL);
     running = true;
-    if (setjmp(done) == 0) receiver(NULL);
+    if (setjmp(done) == 0) {
+        receiver(NULL);
+    }
     assert(published == 240U && warnings == 3U);
     assert(strstr(warning, "recovery=ready") != NULL);
     elrs_sample_t sample;

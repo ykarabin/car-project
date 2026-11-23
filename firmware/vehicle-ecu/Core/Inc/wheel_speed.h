@@ -38,12 +38,13 @@ typedef struct {
 } wheel_speed_t;
 
 /* Signed delta for a 16/32-bit counter; reject the ambiguous half-range case. */
-bool wheel_speed_counter_delta(uint32_t current, uint32_t previous,
-                                unsigned counter_bits, int32_t *delta);
+bool wheel_speed_counter_delta(uint32_t current, uint32_t previous, unsigned counter_bits,
+                               int32_t *delta);
 /* Copy and validate configuration so plausible motion cannot exceed half the counter range. */
-bool wheel_speed_init(wheel_speed_t *speed, const wheel_speed_config_t *config,
-                       uint32_t counter, uint32_t now_us);
-/* Estimate speed from the counter delta and actual elapsed time; reject gaps and implausible deltas. */
+bool wheel_speed_init(wheel_speed_t *speed, const wheel_speed_config_t *config, uint32_t counter,
+                      uint32_t now_us);
+/* Estimate speed from the counter delta and actual elapsed time; reject gaps and implausible
+ * deltas. */
 void wheel_speed_update(wheel_speed_t *speed, uint32_t counter, uint32_t now_us);
 /* Return a snapshot, marking over-age data stale. */
 wheel_speed_sample_t wheel_speed_get(const wheel_speed_t *speed, uint32_t now_us);

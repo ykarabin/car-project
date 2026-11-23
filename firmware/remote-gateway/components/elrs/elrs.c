@@ -164,9 +164,8 @@ static void receiver_task(void *argument)
         (void)xQueueOverwrite(s_sample_queue, &sample);
         if ((sample.uart_errors != logged_uart_errors) &&
             (!error_logged || ((now_us - last_warning_us) >= ELRS_WARNING_PERIOD_US))) {
-            ESP_LOGW(TAG, "UART RX errors=%" PRIu32 " last=%s recovery=%s",
-                     sample.uart_errors, esp_err_to_name(last_uart_error),
-                     recovery_pending ? "pending" : "ready");
+            ESP_LOGW(TAG, "UART RX errors=%" PRIu32 " last=%s recovery=%s", sample.uart_errors,
+                     esp_err_to_name(last_uart_error), recovery_pending ? "pending" : "ready");
             logged_uart_errors = sample.uart_errors;
             last_warning_us = now_us;
             error_logged = true;
@@ -183,19 +182,17 @@ esp_err_t elrs_start(uint16_t required_channel_mask)
         return ESP_ERR_INVALID_ARG;
     }
 
-    const uart_config_t uart_config = {
-        .baud_rate = 420000,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT
-    };
+    const uart_config_t uart_config = {.baud_rate = 420000,
+                                       .data_bits = UART_DATA_8_BITS,
+                                       .parity = UART_PARITY_DISABLE,
+                                       .stop_bits = UART_STOP_BITS_1,
+                                       .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+                                       .source_clk = UART_SCLK_DEFAULT};
 
     esp_err_t error = uart_param_config(ELRS_UART, &uart_config);
     if (error == ESP_OK) {
-        error = uart_set_pin(ELRS_UART, UART_PIN_NO_CHANGE, CONFIG_ELRS_RX_GPIO,
-                             UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+        error = uart_set_pin(ELRS_UART, UART_PIN_NO_CHANGE, CONFIG_ELRS_RX_GPIO, UART_PIN_NO_CHANGE,
+                             UART_PIN_NO_CHANGE);
     }
     if (error == ESP_OK) {
         error = gpio_set_pull_mode(CONFIG_ELRS_RX_GPIO, GPIO_PULLUP_ONLY);
@@ -204,20 +201,20 @@ esp_err_t elrs_start(uint16_t required_channel_mask)
         return error;
     }
 
-    error = uart_driver_install(ELRS_UART, ELRS_RX_BUFFER_SIZE, 0,
-                                ELRS_UART_QUEUE_SIZE, &s_uart_queue, 0);
+    error = uart_driver_install(ELRS_UART, ELRS_RX_BUFFER_SIZE, 0, ELRS_UART_QUEUE_SIZE,
+                                &s_uart_queue, 0);
     if (error != ESP_OK) {
         return error;
     }
 
-    s_sample_queue = xQueueCreateStatic(1U, sizeof(elrs_sample_t),
-                                        s_sample_queue_storage, &s_sample_queue_control);
+    s_sample_queue = xQueueCreateStatic(1U, sizeof(elrs_sample_t), s_sample_queue_storage,
+                                        &s_sample_queue_control);
     const elrs_sample_t initial_sample = {0};
     (void)xQueueOverwrite(s_sample_queue, &initial_sample);
     s_required_channel_mask = required_channel_mask;
 
-    if (xTaskCreate(receiver_task, "elrs_rx", ELRS_TASK_STACK_SIZE, NULL,
-                    ELRS_TASK_PRIORITY, NULL) != pdPASS) {
+    if (xTaskCreate(receiver_task, "elrs_rx", ELRS_TASK_STACK_SIZE, NULL, ELRS_TASK_PRIORITY,
+                    NULL) != pdPASS) {
         vQueueDelete(s_sample_queue);
         s_sample_queue = NULL;
         ESP_ERROR_CHECK(uart_driver_delete(ELRS_UART));

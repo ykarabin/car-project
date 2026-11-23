@@ -28,30 +28,38 @@ static uint32_t s_mask;
 static bool s_fault_before_wake;
 
 static uint32_t s_now = 1000U;
-uint32_t HAL_GetTick(void) { return s_now; }
+uint32_t HAL_GetTick(void)
+{
+    return s_now;
+}
 static void timer_update(void);
 
-static const uint16_t s_sleep_pins[3] = {
-    LEFT_MOTOR_SLP_Pin, RIGHT_MOTOR_SLP_Pin, STEERING_MOTOR_SLP_Pin
-};
+static const uint16_t s_sleep_pins[3] = {LEFT_MOTOR_SLP_Pin, RIGHT_MOTOR_SLP_Pin,
+                                         STEERING_MOTOR_SLP_Pin};
 static GPIO_TypeDef *const s_direction_ports[3] = {GPIOD, GPIOD, GPIOB};
-static const uint16_t s_direction_pins[3] = {
-    LEFT_MOTOR_DIR_Pin, RIGHT_MOTOR_DIR_Pin, STEERING_MOTOR_DIR_Pin
-};
-static const bool s_inverted[3] = {
-    MOTOR_LEFT_DIRECTION_INVERTED != 0,
-    MOTOR_RIGHT_DIRECTION_INVERTED != 0,
-    MOTOR_STEERING_DIRECTION_INVERTED != 0
-};
+static const uint16_t s_direction_pins[3] = {LEFT_MOTOR_DIR_Pin, RIGHT_MOTOR_DIR_Pin,
+                                             STEERING_MOTOR_DIR_Pin};
+static const bool s_inverted[3] = {MOTOR_LEFT_DIRECTION_INVERTED != 0,
+                                   MOTOR_RIGHT_DIRECTION_INVERTED != 0,
+                                   MOTOR_STEERING_DIRECTION_INVERTED != 0};
 
 static bool awake(size_t index)
 {
     return (GPIOD->ODR & s_sleep_pins[index]) != 0U;
 }
 
-uint32_t __get_PRIMASK(void) { return s_mask; }
-void __disable_irq(void) { s_mask = 1U; }
-void __set_PRIMASK(uint32_t mask) { s_mask = mask; }
+uint32_t __get_PRIMASK(void)
+{
+    return s_mask;
+}
+void __disable_irq(void)
+{
+    s_mask = 1U;
+}
+void __set_PRIMASK(uint32_t mask)
+{
+    s_mask = mask;
+}
 void __DSB(void)
 {
     GPIOD->ODR &= ~(GPIOD->BSRR >> 16U);
@@ -80,8 +88,7 @@ void HAL_GPIO_WritePin(GPIO_TypeDef *gpio, uint16_t pin, GPIO_PinState state)
                 assert(!awake(i)); /* DIR only changes with its own bridge asleep. */
             }
         }
-        if (gpio == GPIOD && (pin & s_sleep_pins[i]) != 0U &&
-            state == GPIO_PIN_SET && !awake(i)) {
+        if (gpio == GPIOD && (pin & s_sleep_pins[i]) != 0U && state == GPIO_PIN_SET && !awake(i)) {
             /* A bridge must not wake with a stale preloaded duty. */
             assert(TIM1->active_compare[i] == TIM1->compare[i]);
             assert(s_mask == 1U && motor_safety_faults() == 0U);
@@ -108,7 +115,9 @@ HAL_StatusTypeDef HAL_TIM_PWM_Start(TIM_HandleTypeDef *timer, uint32_t channel)
 
 static void timer_update(void)
 {
-    if ((TIM1->CR1 & TIM_CR1_UDIS) != 0U) return;
+    if ((TIM1->CR1 & TIM_CR1_UDIS) != 0U) {
+        return;
+    }
     for (size_t i = 0U; i < 3U; ++i) {
         TIM1->active_compare[i] = TIM1->compare[i];
     }
@@ -180,22 +189,18 @@ static void test_proportional_outputs(void)
         int16_t steering;
         uint32_t rear_ticks;
         uint32_t steering_ticks;
-    } cases[] = {
-        {0, 0, 0U, 0U},
-        {500, -250, 4250U, 2125U},
-        {-1000, 1000, 8500U, 8500U},
-        {1, -1, 8U, 8U},
-        {0, 500, 0U, 4250U},
-        {-250, 0, 2125U, 0U},
-        {1000, -1000, 8500U, 8500U}
-    };
+    } cases[] = {{0, 0, 0U, 0U},
+                 {500, -250, 4250U, 2125U},
+                 {-1000, 1000, 8500U, 8500U},
+                 {1, -1, 8U, 8U},
+                 {0, 500, 0U, 4250U},
+                 {-250, 0, 2125U, 0U},
+                 {1000, -1000, 8500U, 8500U}};
     for (size_t i = 0U; i < sizeof(cases) / sizeof(cases[0]); ++i) {
-        motor_request_t command = {
-            .steering_pwm = cases[i].steering,
-            .rear_pwm = cases[i].throttle,
-            .rear_enabled = true,
-            .steering_enabled = true
-        };
+        motor_request_t command = {.steering_pwm = cases[i].steering,
+                                   .rear_pwm = cases[i].throttle,
+                                   .rear_enabled = true,
+                                   .steering_enabled = true};
         motor_control_apply(&command);
         timer_update(); /* Normal CCR updates latch at the next 20 kHz period. */
         assert(awake(0U) && awake(1U) && awake(2U));
@@ -216,9 +221,7 @@ static void test_disable_and_reconnect(void)
 {
     init();
     motor_request_t command = {
-        .rear_pwm = -1000, .steering_pwm = 500,
-        .rear_enabled = true, .steering_enabled = true
-    };
+        .rear_pwm = -1000, .steering_pwm = 500, .rear_enabled = true, .steering_enabled = true};
     motor_control_apply(&command);
     timer_update();
     motor_control_apply(NULL); /* WAITING / INVALID / STALE from the UART task. */
@@ -259,9 +262,7 @@ static void test_normal_updates_keep_timer_running(void)
 {
     init();
     motor_request_t command = {
-        .rear_pwm = 100, .steering_pwm = 100,
-        .rear_enabled = true, .steering_enabled = true
-    };
+        .rear_pwm = 100, .steering_pwm = 100, .rear_enabled = true, .steering_enabled = true};
     motor_control_apply(&command);
     const unsigned updates = s_updates;
     command.rear_pwm = 500;
@@ -288,18 +289,14 @@ static void test_initialization_and_hal_failures(void)
         assert(!motor_control_init(&s_timer));
         expect_disabled();
         motor_request_t command = {
-            .rear_pwm = 1000, .steering_pwm = 1000,
-            .rear_enabled = true, .steering_enabled = true
-        };
+            .rear_pwm = 1000, .steering_pwm = 1000, .rear_enabled = true, .steering_enabled = true};
         motor_control_apply(&command);
         expect_disabled();
     }
     init();
     s_fail_update = true;
     motor_request_t command = {
-        .rear_pwm = 1000, .steering_pwm = 1000,
-        .rear_enabled = true, .steering_enabled = true
-    };
+        .rear_pwm = 1000, .steering_pwm = 1000, .rear_enabled = true, .steering_enabled = true};
     motor_control_apply(&command);
     expect_disabled();
     s_fail_update = false;
@@ -311,9 +308,7 @@ static void test_period_rollover_does_not_mix_rear_commands(void)
 {
     init();
     motor_request_t command = {
-        .rear_pwm = 100, .steering_pwm = 100,
-        .rear_enabled = true, .steering_enabled = true
-    };
+        .rear_pwm = 100, .steering_pwm = 100, .rear_enabled = true, .steering_enabled = true};
     motor_control_apply(&command);
     timer_update();
     assert(TIM1->active_compare[0] == 850U && TIM1->active_compare[1] == 850U);
@@ -334,9 +329,7 @@ static void test_service_rear_isolation(void)
 {
     init();
     motor_request_t drive = {
-        .rear_pwm = 1000, .steering_pwm = 500,
-        .rear_enabled = true, .steering_enabled = true
-    };
+        .rear_pwm = 1000, .steering_pwm = 500, .rear_enabled = true, .steering_enabled = true};
     motor_control_apply(&drive);
     motor_control_apply(&(motor_request_t){.steering_pwm = -150, .steering_enabled = true});
     timer_update();
@@ -362,9 +355,7 @@ static void test_steering_coast_is_independent_of_rear_outputs(void)
 {
     init();
     motor_request_t command = {
-        .rear_pwm = 500, .steering_pwm = 700,
-        .rear_enabled = true, .steering_enabled = true
-    };
+        .rear_pwm = 500, .steering_pwm = 700, .rear_enabled = true, .steering_enabled = true};
     motor_control_apply(&command);
     timer_update();
     assert(awake(0U) && awake(1U) && awake(2U));
@@ -410,9 +401,7 @@ static void test_fault_during_reload_cannot_rewake_or_restart(void)
 {
     init();
     motor_request_t drive = {
-        .rear_pwm = 1000, .steering_pwm = 500,
-        .rear_enabled = true, .steering_enabled = true
-    };
+        .rear_pwm = 1000, .steering_pwm = 500, .rear_enabled = true, .steering_enabled = true};
     s_fault_before_wake = true;
     motor_control_apply(&drive);
     expect_disabled();

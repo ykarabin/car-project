@@ -9,13 +9,12 @@
 static TIM_HandleTypeDef *s_right_timer;
 static wheel_speed_t s_right_speed;
 
-static const wheel_speed_config_t s_right_config = {
-    .counts_per_motor_rev = REAR_ENCODER_RIGHT_COUNTS_PER_MOTOR_REV,
-    .sample_ms = REAR_ENCODER_RIGHT_SAMPLE_MS,
-    .max_gap_ms = REAR_ENCODER_RIGHT_MAX_GAP_MS,
-    .counter_bits = 16U,
-    .inverted = (REAR_ENCODER_RIGHT_INVERTED != 0)
-};
+static const wheel_speed_config_t s_right_config = {.counts_per_motor_rev =
+                                                        REAR_ENCODER_RIGHT_COUNTS_PER_MOTOR_REV,
+                                                    .sample_ms = REAR_ENCODER_RIGHT_SAMPLE_MS,
+                                                    .max_gap_ms = REAR_ENCODER_RIGHT_MAX_GAP_MS,
+                                                    .counter_bits = 16U,
+                                                    .inverted = (REAR_ENCODER_RIGHT_INVERTED != 0)};
 
 bool rear_encoders_init(TIM_HandleTypeDef *right)
 {
@@ -29,8 +28,7 @@ bool rear_encoders_init(TIM_HandleTypeDef *right)
     }
     const uint32_t now = timebase_us_now();
     const bool initialized =
-        wheel_speed_init(&s_right_speed, &s_right_config,
-                         __HAL_TIM_GET_COUNTER(right), now);
+        wheel_speed_init(&s_right_speed, &s_right_config, __HAL_TIM_GET_COUNTER(right), now);
     if (!initialized) {
         (void)HAL_TIM_Encoder_Stop(right, TIM_CHANNEL_ALL);
         return false;

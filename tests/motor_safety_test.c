@@ -23,14 +23,26 @@ static uint16_t s_pulse_on_wake;
 static unsigned s_wake_writes;
 static uint32_t s_now = 1000U;
 
-uint32_t HAL_GetTick(void) { return s_now; }
+uint32_t HAL_GetTick(void)
+{
+    return s_now;
+}
 
 #define SLP_PINS ((uint32_t)LEFT_MOTOR_SLP_Pin | RIGHT_MOTOR_SLP_Pin | STEERING_MOTOR_SLP_Pin)
 #define FLT_PINS ((uint32_t)LEFT_MOTOR_FLT_Pin | RIGHT_MOTOR_FLT_Pin | STEERING_MOTOR_FLT_Pin)
 
-uint32_t __get_PRIMASK(void) { return s_mask; }
-void __disable_irq(void) { s_mask = 1U; }
-void __set_PRIMASK(uint32_t mask) { s_mask = mask; }
+uint32_t __get_PRIMASK(void)
+{
+    return s_mask;
+}
+void __disable_irq(void)
+{
+    s_mask = 1U;
+}
+void __set_PRIMASK(uint32_t mask)
+{
+    s_mask = mask;
+}
 void __DSB(void)
 {
     GPIOD->ODR &= ~(GPIOD->BSRR >> 16U);
@@ -59,12 +71,36 @@ void HAL_GPIO_EXTI_IRQHandler(uint16_t pin)
 }
 
 /* Unrelated vectors are linked to exercise the production EXTI dispatcher. */
-_Noreturn void fault_shutdown_halt(void) { assert(false); for (;;) {} }
-void HAL_DMA_IRQHandler(DMA_HandleTypeDef *dma) { (void)dma; assert(false); }
-void HAL_TIM_IRQHandler(TIM_HandleTypeDef *timer) { (void)timer; assert(false); }
-void HAL_UART_IRQHandler(UART_HandleTypeDef *uart) { (void)uart; assert(false); }
-void remote_uart_capture_irq(UART_HandleTypeDef *uart) { (void)uart; assert(false); }
-void steering_encoder_irq(void) { assert(false); }
+_Noreturn void fault_shutdown_halt(void)
+{
+    assert(false);
+    for (;;) {
+    }
+}
+void HAL_DMA_IRQHandler(DMA_HandleTypeDef *dma)
+{
+    (void)dma;
+    assert(false);
+}
+void HAL_TIM_IRQHandler(TIM_HandleTypeDef *timer)
+{
+    (void)timer;
+    assert(false);
+}
+void HAL_UART_IRQHandler(UART_HandleTypeDef *uart)
+{
+    (void)uart;
+    assert(false);
+}
+void remote_uart_capture_irq(UART_HandleTypeDef *uart)
+{
+    (void)uart;
+    assert(false);
+}
+void steering_encoder_irq(void)
+{
+    assert(false);
+}
 
 static void assert_off(void)
 {
@@ -239,7 +275,7 @@ int main(int argc, char **argv)
             s_now += 100U;
             GPIOD->ODR &= ~(uint32_t)STEERING_MOTOR_SLP_Pin;
             EXTI->PR1 = STEERING_MOTOR_FLT_Pin;
-            EXTI15_10_IRQHandler(); /* Brief sleep transition pulse. */
+            EXTI15_10_IRQHandler();                /* Brief sleep transition pulse. */
             assert(motor_safety_wake(true, true)); /* Brief wake pulse. */
             EXTI15_10_IRQHandler();
             assert(motor_safety_poll() == 0U);

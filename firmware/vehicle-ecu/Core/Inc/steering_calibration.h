@@ -21,16 +21,16 @@ bool steering_calibration_valid(const steering_calibration_t *calibration);
 
 /* Map raw angle to +/-1000, clamped at working limits 3% inside the captured endpoints.
  * Invalid input leaves the output unchanged. */
-bool steering_calibration_position(const steering_calibration_t *calibration,
-                                   uint16_t raw, int16_t *position);
+bool steering_calibration_position(const steering_calibration_t *calibration, uint16_t raw,
+                                   int16_t *position);
 
 /* Map +/-1000 to raw angle using asymmetric spans and the same 3% margin. */
-bool steering_calibration_target(const steering_calibration_t *calibration,
-                                 int16_t position, uint16_t *raw);
+bool steering_calibration_target(const steering_calibration_t *calibration, int16_t position,
+                                 uint16_t *raw);
 
 /* 32-byte Flash record with version, CRC-32 and a final commit doubleword. */
-bool steering_calibration_encode(const steering_calibration_t *calibration,
-                                 uint32_t sequence, uint32_t words[STEERING_CAL_RECORD_WORDS]);
+bool steering_calibration_encode(const steering_calibration_t *calibration, uint32_t sequence,
+                                 uint32_t words[STEERING_CAL_RECORD_WORDS]);
 bool steering_calibration_decode(const uint32_t words[STEERING_CAL_RECORD_WORDS],
                                  steering_calibration_t *calibration, uint32_t *sequence);
 /* Compare record sequences across uint32_t wrap. */

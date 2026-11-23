@@ -9,9 +9,8 @@
 
 /* Values observed on the ES900. CH13 is outside the control-channel range. */
 static const uint16_t RECEIVER_CHANNELS[CRSF_CHANNEL_COUNT] = {
-    996U, 989U, 174U, 994U, 191U, 191U, 191U, 191U,
-    191U, 191U, 978U, 1792U, 2047U, 191U, 1811U, 1811U
-};
+    996U, 989U, 174U, 994U,  191U,  191U, 191U,  191U,
+    191U, 191U, 978U, 1792U, 2047U, 191U, 1811U, 1811U};
 
 static void make_frame(const uint16_t channels[CRSF_CHANNEL_COUNT], uint8_t frame[26])
 {

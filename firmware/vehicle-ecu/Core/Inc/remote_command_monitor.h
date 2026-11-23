@@ -40,10 +40,9 @@ void remote_command_monitor_init(remote_command_monitor_t *monitor);
 void remote_command_monitor_reject(remote_command_monitor_t *monitor, uint32_t received_at_ms);
 /* Reject duplicate frames; only OK frames replace the applied command. */
 bool remote_command_monitor_accept(remote_command_monitor_t *monitor,
-                                   const remote_command_t *command,
-                                   uint32_t received_at_ms);
+                                   const remote_command_t *command, uint32_t received_at_ms);
 remote_command_state_t remote_command_monitor_state(const remote_command_monitor_t *monitor,
-                                                   uint32_t now_ms);
+                                                    uint32_t now_ms);
 const char *remote_command_state_name(remote_command_state_t state);
 
 #endif

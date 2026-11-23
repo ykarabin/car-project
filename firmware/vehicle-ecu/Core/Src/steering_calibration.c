@@ -22,8 +22,8 @@ int32_t steering_calibration_delta(uint16_t from, uint16_t to)
 
 bool steering_calibration_valid(const steering_calibration_t *calibration)
 {
-    if ((calibration == NULL) || (calibration->center >= 4096U) ||
-        (calibration->left >= 4096U) || (calibration->right >= 4096U)) {
+    if ((calibration == NULL) || (calibration->center >= 4096U) || (calibration->left >= 4096U) ||
+        (calibration->right >= 4096U)) {
         return false;
     }
     const int32_t left = steering_calibration_delta(calibration->center, calibration->left);
@@ -43,8 +43,8 @@ static int32_t working_span(int32_t span)
     return span - margin;
 }
 
-bool steering_calibration_position(const steering_calibration_t *calibration,
-                                   uint16_t raw, int16_t *position)
+bool steering_calibration_position(const steering_calibration_t *calibration, uint16_t raw,
+                                   int16_t *position)
 {
     if ((position == NULL) || (raw >= 4096U) || !steering_calibration_valid(calibration)) {
         return false;
@@ -54,9 +54,9 @@ bool steering_calibration_position(const steering_calibration_t *calibration,
     if (right_delta < 0) {
         value = -value;
     }
-    int32_t span = (value < 0) ?
-                  (int32_t)int32_magnitude(steering_calibration_delta(calibration->center, calibration->left)) :
-                  (int32_t)int32_magnitude(right_delta);
+    int32_t span = (value < 0) ? (int32_t)int32_magnitude(steering_calibration_delta(
+                                     calibration->center, calibration->left)) :
+                                 (int32_t)int32_magnitude(right_delta);
     span = working_span(span);
     int32_t scaled = (value * 1000) / span;
     if (scaled > 1000) {
@@ -68,16 +68,16 @@ bool steering_calibration_position(const steering_calibration_t *calibration,
     return true;
 }
 
-bool steering_calibration_target(const steering_calibration_t *calibration,
-                                 int16_t position, uint16_t *raw)
+bool steering_calibration_target(const steering_calibration_t *calibration, int16_t position,
+                                 uint16_t *raw)
 {
     if ((raw == NULL) || (position < -1000) || (position > 1000) ||
         !steering_calibration_valid(calibration)) {
         return false;
     }
     const int32_t right = steering_calibration_delta(calibration->center, calibration->right);
-    const int32_t side = (position < 0) ?
-                         steering_calibration_delta(calibration->center, calibration->left) : right;
+    const int32_t side =
+        (position < 0) ? steering_calibration_delta(calibration->center, calibration->left) : right;
     const int32_t span = working_span((int32_t)int32_magnitude(side));
     int32_t offset = ((int32_t)position * span) / 1000;
     if (right < 0) {
@@ -102,16 +102,15 @@ static uint32_t record_crc(const uint32_t *words)
             crc ^= word & UINT32_C(0xFF);
             word >>= 8U;
             for (uint32_t bit = 0U; bit < 8U; ++bit) {
-                crc = ((crc & 1U) != 0U) ?
-                      ((crc >> 1U) ^ UINT32_C(0xEDB88320)) : (crc >> 1U);
+                crc = ((crc & 1U) != 0U) ? ((crc >> 1U) ^ UINT32_C(0xEDB88320)) : (crc >> 1U);
             }
         }
     }
     return crc ^ UINT32_MAX;
 }
 
-bool steering_calibration_encode(const steering_calibration_t *calibration,
-                                 uint32_t sequence, uint32_t words[STEERING_CAL_RECORD_WORDS])
+bool steering_calibration_encode(const steering_calibration_t *calibration, uint32_t sequence,
+                                 uint32_t words[STEERING_CAL_RECORD_WORDS])
 {
     if ((words == NULL) || !steering_calibration_valid(calibration)) {
         return false;
@@ -131,16 +130,14 @@ bool steering_calibration_decode(const uint32_t words[STEERING_CAL_RECORD_WORDS]
                                  steering_calibration_t *calibration, uint32_t *sequence)
 {
     if ((words == NULL) || (calibration == NULL) || (sequence == NULL) ||
-        (words[6] != CAL_COMMIT) || (words[7] != ~CAL_COMMIT) ||
-        (words[0] != CAL_MAGIC) || (words[1] != CAL_VERSION) ||
-        ((words[4] & UINT32_C(0xFFFF0000)) != 0U) || (words[5] != record_crc(words))) {
+        (words[6] != CAL_COMMIT) || (words[7] != ~CAL_COMMIT) || (words[0] != CAL_MAGIC) ||
+        (words[1] != CAL_VERSION) || ((words[4] & UINT32_C(0xFFFF0000)) != 0U) ||
+        (words[5] != record_crc(words))) {
         return false;
     }
-    const steering_calibration_t decoded = {
-        .center = (uint16_t)(words[3] & UINT32_C(0xFFFF)),
-        .left = (uint16_t)(words[3] >> 16U),
-        .right = (uint16_t)words[4]
-    };
+    const steering_calibration_t decoded = {.center = (uint16_t)(words[3] & UINT32_C(0xFFFF)),
+                                            .left = (uint16_t)(words[3] >> 16U),
+                                            .right = (uint16_t)words[4]};
     if (!steering_calibration_valid(&decoded)) {
         return false;
     }

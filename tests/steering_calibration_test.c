@@ -6,7 +6,8 @@
 
 #include "steering_calibration.h"
 
-static void expect_position(const steering_calibration_t *calibration, uint16_t raw, int16_t expected)
+static void expect_position(const steering_calibration_t *calibration, uint16_t raw,
+                            int16_t expected)
 {
     int16_t position = 123;
     assert(steering_calibration_position(calibration, raw, &position));
@@ -47,12 +48,9 @@ static void test_geometry_and_working_margin(void)
 static void test_invalid_geometry(void)
 {
     const steering_calibration_t bad[] = {
-        {1000U, 1000U, 1600U}, {1000U, 999U, 1600U},
-        {1000U, 500U, 500U}, {1000U, 1100U, 1600U},
-        {4096U, 500U, 1600U}, {1000U, 4096U, 1600U},
-        {1000U, 500U, 4096U}, {1000U, 0U, 2048U},
-        {0U, 2048U, 500U}
-    };
+        {1000U, 1000U, 1600U}, {1000U, 999U, 1600U}, {1000U, 500U, 500U},
+        {1000U, 1100U, 1600U}, {4096U, 500U, 1600U}, {1000U, 4096U, 1600U},
+        {1000U, 500U, 4096U},  {1000U, 0U, 2048U},   {0U, 2048U, 500U}};
     for (size_t i = 0U; i < sizeof(bad) / sizeof(bad[0]); ++i) {
         int16_t position = 321;
         assert(!steering_calibration_valid(&bad[i]));
@@ -76,7 +74,8 @@ static void test_records_and_interrupted_writes(void)
     steering_calibration_t decoded = {0};
     uint32_t sequence = 0U;
     assert(steering_calibration_decode(words, &decoded, &sequence));
-    assert(sequence == 7U && decoded.center == 1000U && decoded.left == 500U && decoded.right == 1600U);
+    assert(sequence == 7U && decoded.center == 1000U && decoded.left == 500U &&
+           decoded.right == 1600U);
     for (size_t word = 0U; word < STEERING_CAL_RECORD_WORDS; ++word) {
         for (unsigned bit = 0U; bit < 32U; ++bit) {
             uint32_t corrupted[STEERING_CAL_RECORD_WORDS];

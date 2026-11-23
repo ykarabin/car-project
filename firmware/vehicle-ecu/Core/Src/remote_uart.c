@@ -26,8 +26,8 @@ void remote_uart_capture_irq(UART_HandleTypeDef *uart)
     if (uart != s_uart) {
         return;
     }
-    const uint32_t flags = uart->Instance->ISR &
-        (USART_ISR_ORE | USART_ISR_FE | USART_ISR_NE | USART_ISR_PE);
+    const uint32_t flags =
+        uart->Instance->ISR & (USART_ISR_ORE | USART_ISR_FE | USART_ISR_NE | USART_ISR_PE);
     if (flags != 0U) {
         ++s_rx_diagnostics.events;
         if ((flags & USART_ISR_ORE) != 0U) {
@@ -55,9 +55,8 @@ void remote_uart_log_errors(void)
         return;
     }
     s_logged_events = sample.events;
-    (void)vehicle_log_publish(&(const vehicle_log_message_t){
-        .kind = VEHICLE_LOG_UART, .data.uart = sample
-    });
+    (void)vehicle_log_publish(
+        &(const vehicle_log_message_t){.kind = VEHICLE_LOG_UART, .data.uart = sample});
 }
 
 static void publish_from_isr(const remote_uart_event_t *received)

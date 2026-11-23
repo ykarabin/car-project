@@ -8,13 +8,19 @@
 
 static const steering_calibration_t s_real = {56U, 3654U, 548U};
 
-static int32_t magnitude(int32_t value) { return (value < 0) ? -value : value; }
+static int32_t magnitude(int32_t value)
+{
+    return (value < 0) ? -value : value;
+}
 
 static uint16_t raw_for(const steering_controller_t *controller, int32_t position)
 {
     int32_t raw = controller->calibration.center + (position * controller->direction);
-    if (raw < 0) raw += 4096;
-    else if (raw >= 4096) raw -= 4096;
+    if (raw < 0) {
+        raw += 4096;
+    } else if (raw >= 4096) {
+        raw -= 4096;
+    }
     return (uint16_t)raw;
 }
 
@@ -90,7 +96,8 @@ static void test_hysteresis_and_restart(void)
     assert(!controller.moving);
     assert(steering_controller_update(&controller, 0, 62U, true, 40U) == 0);
     assert(steering_controller_update(&controller, 0, 64U, true, 50U) < 0);
-    assert(steering_controller_update(&controller, 0, 48U, true, 60U) == 0); /* Brake before sign reversal. */
+    assert(steering_controller_update(&controller, 0, 48U, true, 60U) ==
+           0); /* Brake before sign reversal. */
     assert(steering_controller_update(&controller, 0, 48U, true, 70U) > 0);
 
     assert(steering_controller_update(&controller, 0, 48U, false, 71U) > 0);
@@ -99,7 +106,8 @@ static void test_hysteresis_and_restart(void)
     assert(!controller.initialized);
     assert(steering_controller_update(&controller, 1000, 300U, true, 111U) == 0);
     assert(controller.initialized && controller.error_counts == 0);
-    assert(steering_controller_update(&controller, 1000, 300U, true, 200U) == 0); /* Long scheduling gap. */
+    assert(steering_controller_update(&controller, 1000, 300U, true, 200U) ==
+           0); /* Long scheduling gap. */
     assert(controller.initialized && controller.error_counts == 0);
     assert(steering_controller_update(&controller, 1001, 300U, true, 210U) == 0);
     assert(steering_controller_update(&controller, 0, 4096U, true, 220U) == 0);
@@ -132,15 +140,17 @@ static void simulate(const steering_calibration_t *calibration, int32_t initial,
         assert(magnitude(pwm) <= STEERING_CONTROL_PWM_MAX);
         /* Deliberately simple bench model: lag, breakaway threshold and
          * electrical brake. It checks convergence, not hardware tuning. */
-        if (pwm == 0) velocity_milli = 0;
-        else {
+        if (pwm == 0) {
+            velocity_milli = 0;
+        } else {
             const int32_t velocity_goal = (magnitude(pwm) < 40) ? 0 : (int32_t)pwm * 40;
             velocity_milli = ((velocity_milli * 3) + velocity_goal) / 4;
         }
         position_milli += velocity_milli;
         assert(position_milli >= -510000 && position_milli <= 510000);
     }
-    const int32_t target = steering_calibration_delta(calibration->center, controller.target_raw) * controller.direction;
+    const int32_t target = steering_calibration_delta(calibration->center, controller.target_raw) *
+                           controller.direction;
     assert(magnitude((position_milli / 1000) - target) < STEERING_CONTROL_START_COUNTS);
     assert(controller.pwm == 0);
 }

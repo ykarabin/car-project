@@ -13,12 +13,14 @@ bool pwm_calibration_valid(const pwm_calibration_t *calibration)
            (calibration->maximum_us <= PWM_RC_MAX_PULSE_US) &&
            (calibration->minimum_us < calibration->center_us) &&
            (calibration->center_us < calibration->maximum_us) &&
-           (((uint32_t)calibration->center_us - calibration->minimum_us) > calibration->deadband_us) &&
-           (((uint32_t)calibration->maximum_us - calibration->center_us) > calibration->deadband_us);
+           (((uint32_t)calibration->center_us - calibration->minimum_us) >
+            calibration->deadband_us) &&
+           (((uint32_t)calibration->maximum_us - calibration->center_us) >
+            calibration->deadband_us);
 }
 
-void pwm_decoder_capture(pwm_decoder_t *decoder, size_t index, bool rising,
-                         uint32_t capture_ticks, int64_t now_us)
+void pwm_decoder_capture(pwm_decoder_t *decoder, size_t index, bool rising, uint32_t capture_ticks,
+                         int64_t now_us)
 {
     if ((index >= PWM_RC_CHANNEL_COUNT) || (decoder->ticks_per_us == 0U)) {
         return;
@@ -57,10 +59,8 @@ void pwm_decoder_capture(pwm_decoder_t *decoder, size_t index, bool rising,
     channel->rise_pending = false;
     channel->pulse_us = (capture_ticks - channel->rise_ticks) / decoder->ticks_per_us;
 
-    if ((now_us < channel->rise_at_us) ||
-        ((now_us - channel->rise_at_us) > PWM_RC_MAX_PERIOD_US) ||
-        (channel->pulse_us < PWM_RC_MIN_PULSE_US) ||
-        (channel->pulse_us > PWM_RC_MAX_PULSE_US)) {
+    if ((now_us < channel->rise_at_us) || ((now_us - channel->rise_at_us) > PWM_RC_MAX_PERIOD_US) ||
+        (channel->pulse_us < PWM_RC_MIN_PULSE_US) || (channel->pulse_us > PWM_RC_MAX_PULSE_US)) {
         invalidate_channel(channel);
         ++channel->errors;
         return;
@@ -107,8 +107,8 @@ static int16_t normalize(uint32_t pulse_us, const pwm_calibration_t *calibration
 }
 
 void pwm_decoder_sample(const pwm_decoder_t *decoder,
-                        const pwm_calibration_t calibration[PWM_RC_CHANNEL_COUNT],
-                        int64_t now_us, int64_t timeout_us, pwm_rc_sample_t *sample)
+                        const pwm_calibration_t calibration[PWM_RC_CHANNEL_COUNT], int64_t now_us,
+                        int64_t timeout_us, pwm_rc_sample_t *sample)
 {
     *sample = (pwm_rc_sample_t){.valid = true, .received_at_us = now_us};
     for (size_t index = 0U; index < PWM_RC_CHANNEL_COUNT; ++index) {

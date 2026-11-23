@@ -55,8 +55,7 @@ typedef struct {
 void drive_controller_stop(drive_controller_t *controller);
 /* Returns signed PWM for both rear motors. Reverse requires braking and a settled stop.
  * Brief feedback loss only reduces output; invalid commands or prolonged faults stop it. */
-int16_t drive_controller_update(drive_controller_t *controller,
-                                const remote_command_t *command,
+int16_t drive_controller_update(drive_controller_t *controller, const remote_command_t *command,
                                 const wheel_speed_sample_t *right, uint32_t now_ms);
 const char *drive_controller_state_name(drive_control_state_t state);
 

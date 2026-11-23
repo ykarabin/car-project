@@ -23,18 +23,33 @@ typedef struct {
     uint32_t CR2;
 } TIM_TypeDef;
 
-typedef struct { volatile uint32_t AHB2ENR, APB2ENR, CSR; } RCC_TypeDef;
-typedef struct { volatile uint32_t APB1FZR1, APB2FZ; } DBGMCU_TypeDef;
-typedef struct { volatile uint32_t PR1; } EXTI_TypeDef;
-typedef struct { volatile uint32_t KR, PR, RLR, SR, WINR; } IWDG_TypeDef;
+typedef struct {
+    volatile uint32_t AHB2ENR, APB2ENR, CSR;
+} RCC_TypeDef;
+typedef struct {
+    volatile uint32_t APB1FZR1, APB2FZ;
+} DBGMCU_TypeDef;
+typedef struct {
+    volatile uint32_t PR1;
+} EXTI_TypeDef;
+typedef struct {
+    volatile uint32_t KR, PR, RLR, SR, WINR;
+} IWDG_TypeDef;
 
 typedef struct {
     TIM_TypeDef *Instance;
 } TIM_HandleTypeDef;
 
-typedef struct { uint32_t unused; } DMA_HandleTypeDef;
-typedef struct { uint32_t ISR; } USART_TypeDef;
-typedef struct { USART_TypeDef *Instance; uint32_t RxState; } UART_HandleTypeDef;
+typedef struct {
+    uint32_t unused;
+} DMA_HandleTypeDef;
+typedef struct {
+    uint32_t ISR;
+} USART_TypeDef;
+typedef struct {
+    USART_TypeDef *Instance;
+    uint32_t RxState;
+} UART_HandleTypeDef;
 #define HAL_UART_STATE_READY UINT32_C(0)
 #define HAL_UART_STATE_BUSY_RX UINT32_C(1)
 #define USART_ISR_PE UINT32_C(1)

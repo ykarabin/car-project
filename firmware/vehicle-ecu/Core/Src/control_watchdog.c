@@ -12,7 +12,8 @@
 #define IWDG_UPDATE_FLAGS (IWDG_SR_PVU | IWDG_SR_RVU | IWDG_SR_WVU)
 
 _Static_assert(CONTROL_WATCHDOG_NOMINAL_MS > IWDG_UPDATE_TIMEOUT_MS &&
-               CONTROL_WATCHDOG_NOMINAL_MS <= 4096U, "Watchdog reload bounds");
+                   CONTROL_WATCHDOG_NOMINAL_MS <= 4096U,
+               "Watchdog reload bounds");
 
 static uint32_t s_reset_flags;
 static bool s_started;

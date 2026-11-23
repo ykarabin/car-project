@@ -22,31 +22,24 @@ typedef struct {
 
 /* Motor order: left rear, right rear, steering. */
 static const motor_output_t s_motors[MOTOR_COUNT] = {
-    {
-        .direction_port = LEFT_MOTOR_DIR_GPIO_Port,
-        .direction_pin = LEFT_MOTOR_DIR_Pin,
-        .sleep_port = LEFT_MOTOR_SLP_GPIO_Port,
-        .sleep_pin = LEFT_MOTOR_SLP_Pin,
-        .pwm_channel = TIM_CHANNEL_1,
-        .direction_inverted = (MOTOR_LEFT_DIRECTION_INVERTED != 0)
-    },
-    {
-        .direction_port = RIGHT_MOTOR_DIR_GPIO_Port,
-        .direction_pin = RIGHT_MOTOR_DIR_Pin,
-        .sleep_port = RIGHT_MOTOR_SLP_GPIO_Port,
-        .sleep_pin = RIGHT_MOTOR_SLP_Pin,
-        .pwm_channel = TIM_CHANNEL_2,
-        .direction_inverted = (MOTOR_RIGHT_DIRECTION_INVERTED != 0)
-    },
-    {
-        .direction_port = STEERING_MOTOR_DIR_GPIO_Port,
-        .direction_pin = STEERING_MOTOR_DIR_Pin,
-        .sleep_port = STEERING_MOTOR_SLP_GPIO_Port,
-        .sleep_pin = STEERING_MOTOR_SLP_Pin,
-        .pwm_channel = TIM_CHANNEL_3,
-        .direction_inverted = (MOTOR_STEERING_DIRECTION_INVERTED != 0)
-    }
-};
+    {.direction_port = LEFT_MOTOR_DIR_GPIO_Port,
+     .direction_pin = LEFT_MOTOR_DIR_Pin,
+     .sleep_port = LEFT_MOTOR_SLP_GPIO_Port,
+     .sleep_pin = LEFT_MOTOR_SLP_Pin,
+     .pwm_channel = TIM_CHANNEL_1,
+     .direction_inverted = (MOTOR_LEFT_DIRECTION_INVERTED != 0)},
+    {.direction_port = RIGHT_MOTOR_DIR_GPIO_Port,
+     .direction_pin = RIGHT_MOTOR_DIR_Pin,
+     .sleep_port = RIGHT_MOTOR_SLP_GPIO_Port,
+     .sleep_pin = RIGHT_MOTOR_SLP_Pin,
+     .pwm_channel = TIM_CHANNEL_2,
+     .direction_inverted = (MOTOR_RIGHT_DIRECTION_INVERTED != 0)},
+    {.direction_port = STEERING_MOTOR_DIR_GPIO_Port,
+     .direction_pin = STEERING_MOTOR_DIR_Pin,
+     .sleep_port = STEERING_MOTOR_SLP_GPIO_Port,
+     .sleep_pin = STEERING_MOTOR_SLP_Pin,
+     .pwm_channel = TIM_CHANNEL_3,
+     .direction_inverted = (MOTOR_STEERING_DIRECTION_INVERTED != 0)}};
 
 static TIM_HandleTypeDef *s_timer;
 static uint32_t s_period_ticks;
@@ -101,8 +94,8 @@ bool motor_control_init(TIM_HandleTypeDef *pwm_timer)
     return true;
 }
 
-static void apply_outputs(int16_t throttle, int16_t steering,
-                           bool rear_enabled, bool steering_enabled)
+static void apply_outputs(int16_t throttle, int16_t steering, bool rear_enabled,
+                          bool steering_enabled)
 {
     if ((s_timer == NULL) || (motor_safety_poll() != 0U)) {
         disable_outputs();
@@ -124,8 +117,7 @@ static void apply_outputs(int16_t throttle, int16_t steering,
         if (!s_enabled[i]) {
             reload_before_enable = true;
         }
-        const int32_t request = (i < REAR_MOTOR_COUNT) ?
-                                (int32_t)throttle : (int32_t)steering;
+        const int32_t request = (i < REAR_MOTOR_COUNT) ? (int32_t)throttle : (int32_t)steering;
         if (request != 0) {
             const bool reverse = (request < 0) != motor->direction_inverted;
             const GPIO_PinState direction = reverse ? GPIO_PIN_SET : GPIO_PIN_RESET;
@@ -169,6 +161,6 @@ void motor_control_apply(const motor_request_t *request)
         disable_outputs();
         return;
     }
-    apply_outputs(request->rear_pwm, request->steering_pwm,
-                    request->rear_enabled, request->steering_enabled);
+    apply_outputs(request->rear_pwm, request->steering_pwm, request->rear_enabled,
+                  request->steering_enabled);
 }

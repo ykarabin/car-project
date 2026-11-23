@@ -1,0 +1,30 @@
+# Style of the project's own C code (CubeMX, HAL, FreeRTOS, RTT and LVGL are not formatted).
+BasedOnStyle: LLVM
+Language: Cpp
+IndentWidth: 4
+ContinuationIndentWidth: 4
+ColumnLimit: 100
+BreakBeforeBraces: Linux
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: true
+AlignAfterOpenBracket: Align
+AlignConsecutiveMacros: None
+AlignTrailingComments: true
+BinPackArguments: true
+BinPackParameters: true
+BreakBeforeBinaryOperators: None
+IndentCaseLabels: false
+PointerAlignment: Right
+SpaceBeforeParens: ControlStatements
+IncludeBlocks: Preserve
+SortIncludes: Never
+InsertBraces: true
+InsertNewlineAtEOF: true
+KeepEmptyLines:
+  AtStartOfFile: false
+MaxEmptyLinesToKeep: 1
+BreakBeforeTernaryOperators: false
+AlignEscapedNewlines: DontAlign

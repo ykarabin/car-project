@@ -26,7 +26,7 @@ void steering_controller_stop(steering_controller_t *controller);
 
 /* P position controller returning signed PWM in +/-1000.
  * Brief feedback loss reduces output; restart begins at zero PWM. */
-int16_t steering_controller_update(steering_controller_t *controller, int16_t request,
-                                   uint16_t raw, bool feedback_valid, uint32_t now_ms);
+int16_t steering_controller_update(steering_controller_t *controller, int16_t request, uint16_t raw,
+                                   bool feedback_valid, uint32_t now_ms);
 
 #endif

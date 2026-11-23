@@ -2,13 +2,17 @@
 
 uint8_t remote_drive_mode(int16_t channel)
 {
-    if (channel < -500) return 1U;
-    if (channel > 500) return 3U;
+    if (channel < -500) {
+        return 1U;
+    }
+    if (channel > 500) {
+        return 3U;
+    }
     return 2U;
 }
 
-uint8_t remote_mode_cycle_update(remote_mode_cycle_t *state, bool valid,
-                                 int16_t channel, int64_t received_at_us)
+uint8_t remote_mode_cycle_update(remote_mode_cycle_t *state, bool valid, int16_t channel,
+                                 int64_t received_at_us)
 {
     if (state->mode == 0U) {
         state->mode = 1U;
@@ -40,11 +44,10 @@ uint8_t remote_mode_cycle_update(remote_mode_cycle_t *state, bool valid,
 remote_command_t remote_command_from_input(bool valid, int16_t steering, int16_t throttle,
                                            uint8_t drive_mode, uint8_t sequence)
 {
-    remote_command_t command = {.drive_mode = 1U, .status = REMOTE_STATUS_ERROR,
-                                 .sequence = sequence};
-    if (valid && (steering >= -1000) && (steering <= 1000) &&
-        (throttle >= -1000) && (throttle <= 1000) &&
-        (drive_mode >= 1U) && (drive_mode <= 3U)) {
+    remote_command_t command = {
+        .drive_mode = 1U, .status = REMOTE_STATUS_ERROR, .sequence = sequence};
+    if (valid && (steering >= -1000) && (steering <= 1000) && (throttle >= -1000) &&
+        (throttle <= 1000) && (drive_mode >= 1U) && (drive_mode <= 3U)) {
         command.steering = steering;
         command.throttle = throttle;
         command.drive_mode = drive_mode;

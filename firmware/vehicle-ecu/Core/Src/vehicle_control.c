@@ -16,7 +16,7 @@
 #define CAL_JOG_PWM INT32_C(150)
 
 _Static_assert(STEERING_CONTROL_RELEASE_SETTLE_MS > 0U &&
-               STEERING_CONTROL_RELEASE_SETTLE_MS < STEERING_CONTROL_RELEASE_TIMEOUT_MS,
+                   STEERING_CONTROL_RELEASE_SETTLE_MS < STEERING_CONTROL_RELEASE_TIMEOUT_MS,
                "Bounded center-return interval");
 
 typedef enum {
@@ -45,8 +45,7 @@ static bool neutral(const remote_command_t *command)
 
 static bool encoder_ready(const steering_encoder_sample_t *encoder)
 {
-    return (encoder != NULL) && (encoder->state == STEERING_ENCODER_OK) &&
-           (encoder->raw < 4096U);
+    return (encoder != NULL) && (encoder->state == STEERING_ENCODER_OK) && (encoder->raw < 4096U);
 }
 
 void vehicle_control_init(void)
@@ -83,30 +82,27 @@ static const char *steering_state_name(void)
 }
 
 void vehicle_control_log_status(const char *remote_state, uint8_t mode,
-                                 const steering_encoder_sample_t *encoder,
-                                 const wheel_speed_sample_t *right)
+                                const steering_encoder_sample_t *encoder,
+                                const wheel_speed_sample_t *right)
 {
     /* Queue copied values; formatting stays in the logger. */
     const vehicle_log_message_t message = {
         .kind = VEHICLE_LOG_STATUS,
-        .data.status = {
-            .remote_state = remote_state,
-            .drive_state = drive_controller_state_name(s_drive.state),
-            .steering_state = steering_state_name(),
-            .calibration = s_calibration.saved,
-            .measured_mm_s = right != NULL ? right->speed_mm_s : 0,
-            .target_mm_s = s_drive.target_mm_s,
-            .drive_pwm = s_drive.pwm,
-            .steering_pwm = s_controller.pwm,
-            .raw = encoder != NULL ? encoder->raw : 0U,
-            .drive_mode = mode,
-            .cal_stage = s_calibration.stage,
-            .position_valid = s_calibration.has_saved && encoder_ready(encoder),
-            .speed_valid = right != NULL && right->state == WHEEL_SPEED_OK &&
-                           right->age_ms < DRIVE_CONTROL_FEEDBACK_MAX_AGE_MS,
-            .full_power = s_drive.full_power_requested
-        }
-    };
+        .data.status = {.remote_state = remote_state,
+                        .drive_state = drive_controller_state_name(s_drive.state),
+                        .steering_state = steering_state_name(),
+                        .calibration = s_calibration.saved,
+                        .measured_mm_s = right != NULL ? right->speed_mm_s : 0,
+                        .target_mm_s = s_drive.target_mm_s,
+                        .drive_pwm = s_drive.pwm,
+                        .steering_pwm = s_controller.pwm,
+                        .raw = encoder != NULL ? encoder->raw : 0U,
+                        .drive_mode = mode,
+                        .cal_stage = s_calibration.stage,
+                        .position_valid = s_calibration.has_saved && encoder_ready(encoder),
+                        .speed_valid = right != NULL && right->state == WHEEL_SPEED_OK &&
+                                       right->age_ms < DRIVE_CONTROL_FEEDBACK_MAX_AGE_MS,
+                        .full_power = s_drive.full_power_requested}};
     (void)vehicle_log_publish(&message);
 }
 
@@ -115,15 +111,14 @@ static int16_t release_steering(const char *reason)
     steering_controller_stop(&s_controller);
     s_steering_mode = STEERING_MODE_MANUAL;
     s_center_stable = false;
-    (void)vehicle_log_publish(&(const vehicle_log_message_t){
-        .kind = VEHICLE_LOG_STEER_RELEASE, .data.text = reason
-    });
+    (void)vehicle_log_publish(
+        &(const vehicle_log_message_t){.kind = VEHICLE_LOG_STEER_RELEASE, .data.text = reason});
     return 0;
 }
 
 /* Return to center before handing remote steering back to manual control. */
 static int16_t normal_steering(const remote_command_t *control,
-                              const steering_encoder_sample_t *encoder, uint32_t now)
+                               const steering_encoder_sample_t *encoder, uint32_t now)
 {
     const bool valid = s_calibration.has_saved && encoder_ready(encoder);
     const bool stick_neutral = (control->steering >= -VEHICLE_STICK_DEADBAND) &&
@@ -152,16 +147,15 @@ static int16_t normal_steering(const remote_command_t *control,
         if ((now - s_centering_since) >= STEERING_CONTROL_RELEASE_TIMEOUT_MS) {
             return release_steering("TIMEOUT");
         }
-        const int16_t pwm = steering_controller_update(&s_controller, 0,
-                                                       valid ? encoder->raw : 0U, valid, now);
+        const int16_t pwm =
+            steering_controller_update(&s_controller, 0, valid ? encoder->raw : 0U, valid, now);
         if (!valid && !s_controller.initialized) {
             return release_steering("FEEDBACK");
         }
         /* Use the actual center position to decide when steering can be released. */
-        const int32_t offset = valid ?
-            steering_calibration_delta(s_calibration.saved.center, encoder->raw) : 0;
-        if (valid && (pwm == 0) &&
-            (offset > -STEERING_CONTROL_START_COUNTS) &&
+        const int32_t offset =
+            valid ? steering_calibration_delta(s_calibration.saved.center, encoder->raw) : 0;
+        if (valid && (pwm == 0) && (offset > -STEERING_CONTROL_START_COUNTS) &&
             (offset < STEERING_CONTROL_START_COUNTS)) {
             if (!s_center_stable) {
                 s_center_stable = true;
@@ -183,8 +177,8 @@ static int16_t normal_steering(const remote_command_t *control,
 
 /* Select neutral wait, calibration or normal control for this cycle. */
 void vehicle_control_update(const remote_command_t *command,
-                             const steering_encoder_sample_t *encoder,
-                             const wheel_speed_sample_t *right_speed)
+                            const steering_encoder_sample_t *encoder,
+                            const wheel_speed_sample_t *right_speed)
 {
     const remote_command_t *control =
         (remote_command_valid(command) && (command->status == REMOTE_STATUS_OK)) ? command : NULL;
@@ -196,18 +190,13 @@ void vehicle_control_update(const remote_command_t *command,
         &s_calibration, neutral(control), encoder_ready(encoder),
         encoder != NULL ? encoder->raw : 0U, now);
     switch (event) {
-    case STEERING_CAL_EVENT_STARTED:
-        s_wait_neutral = false;
-        break;
+    case STEERING_CAL_EVENT_STARTED: s_wait_neutral = false; break;
     case STEERING_CAL_EVENT_SAVED:
         (void)steering_controller_init(&s_controller, &s_calibration.saved);
         s_wait_neutral = true;
         break;
-    case STEERING_CAL_EVENT_CANCELLED:
-        s_wait_neutral = true;
-        break;
-    case STEERING_CAL_EVENT_NONE:
-        break;
+    case STEERING_CAL_EVENT_CANCELLED: s_wait_neutral = true; break;
+    case STEERING_CAL_EVENT_NONE: break;
     }
 
     if (s_wait_neutral) {
@@ -228,22 +217,20 @@ void vehicle_control_update(const remote_command_t *command,
             motor_control_apply(NULL);
         } else {
             const int32_t request = ((control->steering >= -VEHICLE_STICK_DEADBAND) &&
-                                     (control->steering <= VEHICLE_STICK_DEADBAND)) ? 0 :
-                                     ((int32_t)control->steering * CAL_JOG_PWM) / 1000;
-            const motor_request_t output = {
-                .steering_pwm = (int16_t)request,
-                .steering_enabled = true
-            };
+                                     (control->steering <= VEHICLE_STICK_DEADBAND)) ?
+                                        0 :
+                                        ((int32_t)control->steering * CAL_JOG_PWM) / 1000;
+            const motor_request_t output = {.steering_pwm = (int16_t)request,
+                                            .steering_enabled = true};
             motor_control_apply(&output);
         }
     } else {
-        motor_request_t output = {
-            .rear_pwm = drive_controller_update(&s_drive, control, right_speed, now),
-            .rear_enabled = true
-        };
+        motor_request_t output = {.rear_pwm =
+                                      drive_controller_update(&s_drive, control, right_speed, now),
+                                  .rear_enabled = true};
         output.steering_pwm = normal_steering(control, encoder, now);
         output.steering_enabled = (s_steering_mode == STEERING_MODE_REMOTE) ||
-                                   (s_steering_mode == STEERING_MODE_CENTERING);
+                                  (s_steering_mode == STEERING_MODE_CENTERING);
         motor_control_apply(&output);
     }
 }

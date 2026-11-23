@@ -46,7 +46,7 @@ bool pwm_calibration_valid(const pwm_calibration_t *calibration);
 void pwm_decoder_capture(pwm_decoder_t *decoder, size_t channel, bool rising,
                          uint32_t capture_ticks, int64_t now_us);
 void pwm_decoder_sample(const pwm_decoder_t *decoder,
-                        const pwm_calibration_t calibration[PWM_RC_CHANNEL_COUNT],
-                        int64_t now_us, int64_t timeout_us, pwm_rc_sample_t *sample);
+                        const pwm_calibration_t calibration[PWM_RC_CHANNEL_COUNT], int64_t now_us,
+                        int64_t timeout_us, pwm_rc_sample_t *sample);
 
 #endif

@@ -14,12 +14,17 @@ static unsigned s_length;
 static unsigned s_writes;
 static int s_accept = 1;
 
-void SEGGER_RTT_Init(void) { _SEGGER_RTT.MaxNumDownBuffers = 1; }
+void SEGGER_RTT_Init(void)
+{
+    _SEGGER_RTT.MaxNumDownBuffers = 1;
+}
 unsigned SEGGER_RTT_Write(unsigned channel, const void *bytes, unsigned length)
 {
     assert(channel == 0U && length < sizeof(s_line));
     ++s_writes;
-    if (!s_accept) return 0U; /* Model NO_BLOCK_SKIP without a consuming host. */
+    if (!s_accept) {
+        return 0U; /* Model NO_BLOCK_SKIP without a consuming host. */
+    }
     (void)memcpy(s_line, bytes, length);
     s_line[length] = '\0';
     s_length = length;

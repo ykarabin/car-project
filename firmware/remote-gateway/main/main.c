@@ -11,29 +11,28 @@
 #include "sdkconfig.h"
 
 enum {
-    STEERING_CHANNEL = 0, THROTTLE_CHANNEL = 1, MODE_CHANNEL = 2,
-    LOG_PERIOD_MS = 200, WARNING_PERIOD_MS = 1000
+    STEERING_CHANNEL = 0,
+    THROTTLE_CHANNEL = 1,
+    MODE_CHANNEL = 2,
+    LOG_PERIOD_MS = 200,
+    WARNING_PERIOD_MS = 1000
 };
 static const char *const TAG = "gateway";
 
 static const char *source_name(remote_source_t source)
 {
     switch (source) {
-    case REMOTE_SOURCE_ELRS:
-        return "ELRS";
-    case REMOTE_SOURCE_PWM:
-        return "PWM";
-    default:
-        return "NONE";
+    case REMOTE_SOURCE_ELRS: return "ELRS";
+    case REMOTE_SOURCE_PWM: return "PWM";
+    default: return "NONE";
     }
 }
 
 /* Sample RC inputs and send normalized commands periodically. */
 void app_main(void)
 {
-    const uint16_t required_channels = (uint16_t)((1U << STEERING_CHANNEL) |
-                                                 (1U << THROTTLE_CHANNEL) |
-                                                 (1U << MODE_CHANNEL));
+    const uint16_t required_channels =
+        (uint16_t)((1U << STEERING_CHANNEL) | (1U << THROTTLE_CHANNEL) | (1U << MODE_CHANNEL));
     ESP_ERROR_CHECK(elrs_start(required_channels));
     ESP_ERROR_CHECK(pwm_rc_start());
     ESP_ERROR_CHECK(remote_uart_start());
@@ -80,9 +79,9 @@ void app_main(void)
         const bool source_changed = (next_source != source);
         source = next_source;
 
-        const uint8_t pwm_drive_mode = remote_mode_cycle_update(
-            &pwm_mode, (source == REMOTE_SOURCE_PWM) && pwm.valid,
-            pwm.normalized[2], pwm.channel_received_at_us[2]);
+        const uint8_t pwm_drive_mode =
+            remote_mode_cycle_update(&pwm_mode, (source == REMOTE_SOURCE_PWM) && pwm.valid,
+                                     pwm.normalized[2], pwm.channel_received_at_us[2]);
         bool input_valid = false;
         int16_t steering = 0;
         int16_t throttle = 0;
@@ -101,8 +100,8 @@ void app_main(void)
             /* NONE sends a neutral ERROR command. */
         }
 
-        const remote_command_t command = remote_command_from_input(
-            input_valid, steering, throttle, drive_mode, sequence);
+        const remote_command_t command =
+            remote_command_from_input(input_valid, steering, throttle, drive_mode, sequence);
         const esp_err_t tx_error = remote_uart_send(&command);
         if (tx_error != ESP_OK) {
             ++tx_errors;
@@ -117,28 +116,29 @@ void app_main(void)
         if (source_changed || (valid != was_valid) ||
             ((now - last_log) >= pdMS_TO_TICKS(LOG_PERIOD_MS))) {
             if (source == REMOTE_SOURCE_ELRS) {
-                ESP_LOGI(TAG, "RC %s src=ELRS | steering=%d throttle=%d mode=%u seq=%u | "
+                ESP_LOGI(TAG,
+                         "RC %s src=ELRS | steering=%d throttle=%d mode=%u seq=%u | "
                          "frames=%" PRIu32 " crc_errors=%" PRIu32 " range_errors=%" PRIu32,
                          valid ? "OK" : "ERROR", (int)command.steering, (int)command.throttle,
-                         (unsigned)command.drive_mode, (unsigned)command.sequence,
-                         elrs.rc_frames, elrs.crc_errors, elrs.range_errors);
+                         (unsigned)command.drive_mode, (unsigned)command.sequence, elrs.rc_frames,
+                         elrs.crc_errors, elrs.range_errors);
             } else {
-                ESP_LOGI(TAG, "RC %s src=%s | steering=%d throttle=%d mode=%u seq=%u | "
+                ESP_LOGI(TAG,
+                         "RC %s src=%s | steering=%d throttle=%d mode=%u seq=%u | "
                          "pwm_us=%" PRIu32 "/%" PRIu32 "/%" PRIu32 " errors=%" PRIu32
                          " elrs_crc=%" PRIu32 " range=%" PRIu32,
-                         valid ? "OK" : "ERROR", source_name(source),
-                         (int)command.steering, (int)command.throttle,
-                         (unsigned)command.drive_mode, (unsigned)command.sequence,
-                         pwm.pulse_us[0], pwm.pulse_us[1], pwm.pulse_us[2], pwm.errors,
-                         elrs.crc_errors, elrs.range_errors);
+                         valid ? "OK" : "ERROR", source_name(source), (int)command.steering,
+                         (int)command.throttle, (unsigned)command.drive_mode,
+                         (unsigned)command.sequence, pwm.pulse_us[0], pwm.pulse_us[1],
+                         pwm.pulse_us[2], pwm.errors, elrs.crc_errors, elrs.range_errors);
             }
             last_log = now;
         }
-        if (error_pending && (!error_logged ||
-            ((now - last_warning) >= pdMS_TO_TICKS(WARNING_PERIOD_MS)))) {
+        if (error_pending &&
+            (!error_logged || ((now - last_warning) >= pdMS_TO_TICKS(WARNING_PERIOD_MS)))) {
             ESP_LOGW(TAG, "I/O last=%s:%s | elrs=%" PRIu32 " pwm=%" PRIu32 " tx=%" PRIu32,
-                     last_error_source, esp_err_to_name(last_error),
-                     elrs_errors, pwm_errors, tx_errors);
+                     last_error_source, esp_err_to_name(last_error), elrs_errors, pwm_errors,
+                     tx_errors);
             error_pending = false;
             error_logged = true;
             last_warning = now;

@@ -23,16 +23,14 @@ void vehicle_app_run(UART_HandleTypeDef *uart)
     remote_command_monitor_t monitor;
     remote_command_monitor_init(&monitor);
     (void)vehicle_log_publish(&(const vehicle_log_message_t){
-        .kind = VEHICLE_LOG_BOOT, .data.reset_flags = control_watchdog_reset_flags()
-    });
+        .kind = VEHICLE_LOG_BOOT, .data.reset_flags = control_watchdog_reset_flags()});
     vehicle_control_init();
     if (!remote_uart_init(uart)) {
         fault_shutdown_halt();
     }
     (void)vehicle_log_publish(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_CONFIG});
-    (void)vehicle_log_publish(&(const vehicle_log_message_t){
-        .kind = VEHICLE_LOG_REMOTE, .data.text = "WAITING"
-    });
+    (void)vehicle_log_publish(
+        &(const vehicle_log_message_t){.kind = VEHICLE_LOG_REMOTE, .data.text = "WAITING"});
     uint32_t last_log = HAL_GetTick();
     uint32_t last_warning = last_log;
     steering_encoder_state_t logged_steering = STEERING_ENCODER_OK;
@@ -50,7 +48,8 @@ void vehicle_app_run(UART_HandleTypeDef *uart)
                 break;
             }
             if (received.valid) {
-                (void)remote_command_monitor_accept(&monitor, &received.command, received.received_at_ms);
+                (void)remote_command_monitor_accept(&monitor, &received.command,
+                                                    received.received_at_ms);
             } else {
                 remote_command_monitor_reject(&monitor, received.received_at_ms);
             }
@@ -67,20 +66,17 @@ void vehicle_app_run(UART_HandleTypeDef *uart)
         const uint32_t latched_faults = motor_safety_faults();
         if (latched_faults != logged_motor_faults) {
             if (logged_motor_faults == 0U) {
-                (void)vehicle_log_publish(&(const vehicle_log_message_t){
-                    .kind = VEHICLE_LOG_MOTOR_FAULT_FIRST,
-                    .data.motor_first = motor_safety_first_fault()
-                });
+                (void)vehicle_log_publish(
+                    &(const vehicle_log_message_t){.kind = VEHICLE_LOG_MOTOR_FAULT_FIRST,
+                                                   .data.motor_first = motor_safety_first_fault()});
             }
             logged_motor_faults = latched_faults;
             (void)vehicle_log_publish(&(const vehicle_log_message_t){
-                .kind = VEHICLE_LOG_MOTOR_FAULT, .data.motor_faults = latched_faults
-            });
+                .kind = VEHICLE_LOG_MOTOR_FAULT, .data.motor_faults = latched_faults});
         }
         if (state != previous_state) {
             (void)vehicle_log_publish(&(const vehicle_log_message_t){
-                .kind = VEHICLE_LOG_REMOTE, .data.text = remote_command_state_name(state)
-            });
+                .kind = VEHICLE_LOG_REMOTE, .data.text = remote_command_state_name(state)});
             previous_state = state;
         }
         if ((now - last_log) >= STATUS_PERIOD_MS) {
@@ -89,25 +85,23 @@ void vehicle_app_run(UART_HandleTypeDef *uart)
                     .kind = VEHICLE_LOG_STATUS,
                     .data.status = {.remote_state = remote_command_state_name(state),
                                     .drive_mode = monitor.command.drive_mode,
-                                    .motor_faults = latched_faults}
-                });
+                                    .motor_faults = latched_faults}});
             } else {
-                vehicle_control_log_status(remote_command_state_name(state), monitor.command.drive_mode,
-                                             &encoder, &rear);
+                vehicle_control_log_status(remote_command_state_name(state),
+                                           monitor.command.drive_mode, &encoder, &rear);
             }
             last_log = now;
         }
         if ((now - last_warning) >= WARNING_PERIOD_MS) {
             remote_uart_log_errors();
             if ((encoder.state != logged_steering) || (rear.state != logged_right)) {
-                const bool ready = encoder.state == STEERING_ENCODER_OK &&
-                                    rear.state == WHEEL_SPEED_OK;
+                const bool ready =
+                    encoder.state == STEERING_ENCODER_OK && rear.state == WHEEL_SPEED_OK;
                 (void)vehicle_log_publish(&(const vehicle_log_message_t){
                     .kind = VEHICLE_LOG_FEEDBACK,
                     .data.feedback = {.ready = ready,
                                       .steering = steering_encoder_state_name(encoder.state),
-                                      .right = wheel_speed_state_name(rear.state)}
-                });
+                                      .right = wheel_speed_state_name(rear.state)}});
                 logged_steering = encoder.state;
                 logged_right = rear.state;
             }

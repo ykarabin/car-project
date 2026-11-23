@@ -62,8 +62,7 @@ static void test_noise_duplicate_samples_and_reconnect(void)
     assert(remote_mode_cycle_update(&state, true, 1000, 660000) == 3U);
 
     /* The existing formatter receives the same mode values for either source. */
-    const remote_command_t command = remote_command_from_input(true, -500, 750,
-        state.mode, 42U);
+    const remote_command_t command = remote_command_from_input(true, -500, 750, state.mode, 42U);
     assert(command.status == REMOTE_STATUS_OK && command.drive_mode == 3U);
     assert(command.steering == -500 && command.throttle == 750 && command.sequence == 42U);
 }

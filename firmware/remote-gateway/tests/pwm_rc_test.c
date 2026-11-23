@@ -11,8 +11,7 @@
 static const pwm_calibration_t CALIBRATION[PWM_RC_CHANNEL_COUNT] = {
     {1000U, 1500U, 2000U, 20U, false},
     {1000U, 1500U, 2000U, 20U, false},
-    {1000U, 1500U, 2000U, 0U, false}
-};
+    {1000U, 1500U, 2000U, 0U, false}};
 
 static uint32_t capture_ticks(int64_t time_us)
 {
@@ -27,7 +26,7 @@ static void pulse(pwm_decoder_t *decoder, size_t channel, int64_t rise_us, uint3
 }
 
 static void frame(pwm_decoder_t *decoder, int64_t start_us,
-                   const uint32_t widths[PWM_RC_CHANNEL_COUNT])
+                  const uint32_t widths[PWM_RC_CHANNEL_COUNT])
 {
     for (size_t channel = 0U; channel < PWM_RC_CHANNEL_COUNT; ++channel) {
         pulse(decoder, channel, start_us + (int64_t)(channel * 100U), widths[channel]);
@@ -60,9 +59,8 @@ static void test_startup_and_normalization(void)
 
     for (uint32_t index = 1U; index <= PWM_RC_CONFIRM_PULSES; ++index) {
         frame(&decoder, TEST_START_US + (int64_t)(index * 20000U), widths);
-        pwm_decoder_sample(&decoder, CALIBRATION,
-                            TEST_START_US + (int64_t)(index * 20000U) + 2800,
-                            TEST_TIMEOUT_US, &sample);
+        pwm_decoder_sample(&decoder, CALIBRATION, TEST_START_US + (int64_t)(index * 20000U) + 2800,
+                           TEST_TIMEOUT_US, &sample);
         assert(sample.valid == (index == PWM_RC_CONFIRM_PULSES));
     }
     assert(sample.normalized[0] == -1000);
@@ -89,8 +87,7 @@ static void test_any_channel_timeout(void)
             }
         }
         pwm_rc_sample_t sample;
-        pwm_decoder_sample(&decoder, CALIBRATION, TEST_START_US + 163000,
-                            TEST_TIMEOUT_US, &sample);
+        pwm_decoder_sample(&decoder, CALIBRATION, TEST_START_US + 163000, TEST_TIMEOUT_US, &sample);
         assert(!sample.valid && sample.received_at_us == 0 && sample.valid_since_us == 0);
         for (size_t channel = 0U; channel < PWM_RC_CHANNEL_COUNT; ++channel) {
             assert(sample.normalized[channel] == 0);
@@ -113,15 +110,16 @@ static void test_throttle_endpoint_calibration(void)
     pwm_decoder_sample(&decoder, calibration, now_us, TEST_TIMEOUT_US, &sample);
     assert(sample.valid && sample.normalized[1] == 1000);
     assert(sample.normalized[0] == 958 && sample.normalized[2] == 1000);
-    const remote_command_t command = remote_command_from_input(
-        sample.valid, sample.normalized[0], sample.normalized[1], 3U, 42U);
+    const remote_command_t command = remote_command_from_input(sample.valid, sample.normalized[0],
+                                                               sample.normalized[1], 3U, 42U);
     assert(command.status == REMOTE_STATUS_OK && command.throttle == 1000);
     assert(command.steering == 958 && command.drive_mode == 3U);
 
-    const struct { uint32_t pulse; int16_t normalized; } cases[] = {
-        {1000U, -1000}, {1240U, -500}, {1480U, 0}, {1500U, 0},
-        {1520U, 0}, {1750U, 500}, {1980U, 1000}, {2000U, 1000}
-    };
+    const struct {
+        uint32_t pulse;
+        int16_t normalized;
+    } cases[] = {{1000U, -1000}, {1240U, -500}, {1480U, 0},    {1500U, 0},
+                 {1520U, 0},     {1750U, 500},  {1980U, 1000}, {2000U, 1000}};
     for (size_t i = 0U; i < sizeof(cases) / sizeof(cases[0]); ++i) {
         decoder = (pwm_decoder_t){.ticks_per_us = 80U};
         const uint32_t pulse_widths[] = {1500U, cases[i].pulse, 1500U};
@@ -174,13 +172,12 @@ static void test_error_and_recovery(void)
 
     for (uint32_t index = 5U; index <= 7U; ++index) {
         frame(&decoder, TEST_START_US + (int64_t)(index * 20000U), widths);
-        pwm_decoder_sample(&decoder, CALIBRATION,
-                            TEST_START_US + (int64_t)(index * 20000U) + 2800,
-                            TEST_TIMEOUT_US, &sample);
+        pwm_decoder_sample(&decoder, CALIBRATION, TEST_START_US + (int64_t)(index * 20000U) + 2800,
+                           TEST_TIMEOUT_US, &sample);
         assert(sample.valid == (index == 7U));
     }
     pwm_decoder_capture(&decoder, 0U, false, capture_ticks(TEST_START_US + 145000),
-                         TEST_START_US + 145000);
+                        TEST_START_US + 145000);
     pwm_decoder_sample(&decoder, CALIBRATION, TEST_START_US + 145000, TEST_TIMEOUT_US, &sample);
     assert(!sample.valid && sample.errors == 2U);
 }

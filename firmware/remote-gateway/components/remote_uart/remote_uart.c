@@ -13,18 +13,16 @@ esp_err_t remote_uart_start(void)
         (CONFIG_REMOTE_UART_TX_GPIO == CONFIG_ELRS_RX_GPIO)) {
         return ESP_ERR_INVALID_ARG;
     }
-    const uart_config_t config = {
-        .baud_rate = REMOTE_UART_BAUD_RATE,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT
-    };
+    const uart_config_t config = {.baud_rate = REMOTE_UART_BAUD_RATE,
+                                  .data_bits = UART_DATA_8_BITS,
+                                  .parity = UART_PARITY_DISABLE,
+                                  .stop_bits = UART_STOP_BITS_1,
+                                  .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+                                  .source_clk = UART_SCLK_DEFAULT};
     esp_err_t error = uart_param_config(REMOTE_UART, &config);
     if (error == ESP_OK) {
-        error = uart_set_pin(REMOTE_UART, CONFIG_REMOTE_UART_TX_GPIO,
-                             UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+        error = uart_set_pin(REMOTE_UART, CONFIG_REMOTE_UART_TX_GPIO, UART_PIN_NO_CHANGE,
+                             UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     }
     if (error == ESP_OK) {
         error = uart_driver_install(REMOTE_UART, 256, 0, 0, NULL, 0);

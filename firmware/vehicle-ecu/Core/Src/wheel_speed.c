@@ -4,8 +4,8 @@
 
 #include "rear_encoder_config.h"
 
-bool wheel_speed_counter_delta(uint32_t current, uint32_t previous,
-                                unsigned counter_bits, int32_t *delta)
+bool wheel_speed_counter_delta(uint32_t current, uint32_t previous, unsigned counter_bits,
+                               int32_t *delta)
 {
     if ((delta == NULL) || ((counter_bits != 16U) && (counter_bits != 32U))) {
         return false;
@@ -20,26 +20,26 @@ bool wheel_speed_counter_delta(uint32_t current, uint32_t previous,
     return true;
 }
 
-bool wheel_speed_init(wheel_speed_t *speed, const wheel_speed_config_t *config,
-                       uint32_t counter, uint32_t now_us)
+bool wheel_speed_init(wheel_speed_t *speed, const wheel_speed_config_t *config, uint32_t counter,
+                      uint32_t now_us)
 {
     if (speed == NULL) {
         return false;
     }
     *speed = (wheel_speed_t){0};
     /* Limit encoder resolution to keep count and speed calculations within range. */
-    if ((config == NULL) ||
-        ((config->counter_bits != 16U) && (config->counter_bits != 32U)) ||
-        (config->counts_per_motor_rev == 0U) ||
-        (config->counts_per_motor_rev > 16384U) || (config->sample_ms == 0U) ||
-        (config->max_gap_ms <= config->sample_ms) || (config->max_gap_ms > 1000U)) {
+    if ((config == NULL) || ((config->counter_bits != 16U) && (config->counter_bits != 32U)) ||
+        (config->counts_per_motor_rev == 0U) || (config->counts_per_motor_rev > 16384U) ||
+        (config->sample_ms == 0U) || (config->max_gap_ms <= config->sample_ms) ||
+        (config->max_gap_ms > 1000U)) {
         return false;
     }
     const uint64_t maximum_counts =
-        ((uint64_t)REAR_ENCODER_MAX_MOTOR_RPM * config->counts_per_motor_rev *
-         config->max_gap_ms) / 60000U + 1U;
-    const uint64_t half_range = (config->counter_bits == 16U) ?
-                                UINT64_C(32768) : UINT64_C(2147483648);
+        ((uint64_t)REAR_ENCODER_MAX_MOTOR_RPM * config->counts_per_motor_rev * config->max_gap_ms) /
+            60000U +
+        1U;
+    const uint64_t half_range =
+        (config->counter_bits == 16U) ? UINT64_C(32768) : UINT64_C(2147483648);
     if (maximum_counts >= half_range) {
         return false;
     }
@@ -68,7 +68,8 @@ void wheel_speed_update(wheel_speed_t *speed, uint32_t counter, uint32_t now_us)
     int32_t delta = 0;
     const bool unambiguous = wheel_speed_counter_delta(counter, speed->sample.counter,
                                                        speed->config.counter_bits, &delta);
-    speed->sample.counter = (speed->config.counter_bits == 16U) ? counter & UINT32_C(65535) : counter;
+    speed->sample.counter =
+        (speed->config.counter_bits == 16U) ? counter & UINT32_C(65535) : counter;
     speed->sample.interval_us = elapsed;
     speed->sample.interval_ms = elapsed / 1000U;
     speed->updated_at_us = now_us;
@@ -78,8 +79,10 @@ void wheel_speed_update(wheel_speed_t *speed, uint32_t counter, uint32_t now_us)
         ++speed->sample.rejected;
         return;
     }
-    const int64_t maximum = ((int64_t)REAR_ENCODER_MAX_MOTOR_RPM *
-                              speed->config.counts_per_motor_rev * elapsed) / 60000000 + 1;
+    const int64_t maximum =
+        ((int64_t)REAR_ENCODER_MAX_MOTOR_RPM * speed->config.counts_per_motor_rev * elapsed) /
+            60000000 +
+        1;
     if (!unambiguous || ((int64_t)delta > maximum) || ((int64_t)delta < -maximum)) {
         speed->sample.state = WHEEL_SPEED_INVALID;
         ++speed->sample.rejected;
@@ -91,8 +94,9 @@ void wheel_speed_update(wheel_speed_t *speed, uint32_t counter, uint32_t now_us)
     const int64_t motor_denominator = (int64_t)speed->config.counts_per_motor_rev * elapsed;
     const int64_t wheel_denominator = motor_denominator * REAR_ENCODER_GEAR_RATIO;
     speed->sample.delta_counts = delta;
-    speed->sample.speed_mm_s = (int32_t)(((int64_t)delta * REAR_ENCODER_WHEEL_CIRCUMFERENCE_UM * 1000) /
-                                        wheel_denominator);
+    speed->sample.speed_mm_s =
+        (int32_t)(((int64_t)delta * REAR_ENCODER_WHEEL_CIRCUMFERENCE_UM * 1000) /
+                  wheel_denominator);
     speed->sample.state = WHEEL_SPEED_OK;
 }
 

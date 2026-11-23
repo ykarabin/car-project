@@ -6,8 +6,7 @@
 
 bool remote_command_valid(const remote_command_t *command)
 {
-    return (command != NULL) &&
-           (command->steering >= -1000) && (command->steering <= 1000) &&
+    return (command != NULL) && (command->steering >= -1000) && (command->steering <= 1000) &&
            (command->throttle >= -1000) && (command->throttle <= 1000) &&
            (command->drive_mode >= 1U) && (command->drive_mode <= 3U) &&
            ((command->status == REMOTE_STATUS_OK) || (command->status == REMOTE_STATUS_ERROR)) &&
@@ -37,25 +36,24 @@ int remote_command_format(char *line, size_t size, const remote_command_t *comma
     if ((line == NULL) || !remote_command_valid(command)) {
         return -1;
     }
-    const int length = snprintf(line, size, "RC,%" PRId32 ",%" PRId32 ",%" PRIu32
-                                ",%" PRIu32 ",%" PRIu32,
-                                (int32_t)command->steering, (int32_t)command->throttle,
-                                (uint32_t)command->drive_mode, (uint32_t)command->status,
-                                (uint32_t)command->sequence);
+    const int length = snprintf(
+        line, size, "RC,%" PRId32 ",%" PRId32 ",%" PRIu32 ",%" PRIu32 ",%" PRIu32,
+        (int32_t)command->steering, (int32_t)command->throttle, (uint32_t)command->drive_mode,
+        (uint32_t)command->status, (uint32_t)command->sequence);
     if ((length < 0) || ((size_t)length >= size)) {
         return -1;
     }
     const uint16_t crc = remote_crc16(line, (size_t)length);
-    const int tail = snprintf(line + length, size - (size_t)length,
-                              "*%04" PRIX32 "\n", (uint32_t)crc);
+    const int tail =
+        snprintf(line + length, size - (size_t)length, "*%04" PRIX32 "\n", (uint32_t)crc);
     if ((tail != 6) || ((size_t)tail >= size - (size_t)length)) {
         return -1;
     }
     return length + tail;
 }
 
-static bool read_number(const char **cursor, char separator,
-                         int32_t minimum, int32_t maximum, int32_t *output)
+static bool read_number(const char **cursor, char separator, int32_t minimum, int32_t maximum,
+                        int32_t *output)
 {
     const char *p = *cursor;
     const bool negative = (*p == '-');
@@ -124,17 +122,15 @@ static bool parse_line(const char *line, remote_command_t *command)
     int32_t status;
     int32_t sequence;
     if (!read_number(&p, ',', -1000, 1000, &steering) ||
-        !read_number(&p, ',', -1000, 1000, &throttle) ||
-        !read_number(&p, ',', 1, 3, &mode) ||
-        !read_number(&p, ',', 0, 1, &status) ||
-        !read_number(&p, '*', 0, 255, &sequence)) {
+        !read_number(&p, ',', -1000, 1000, &throttle) || !read_number(&p, ',', 1, 3, &mode) ||
+        !read_number(&p, ',', 0, 1, &status) || !read_number(&p, '*', 0, 255, &sequence)) {
         return false;
     }
-    const remote_command_t decoded = {
-        .steering = (int16_t)steering, .throttle = (int16_t)throttle,
-        .drive_mode = (uint8_t)mode, .status = (remote_status_t)status,
-        .sequence = (uint8_t)sequence
-    };
+    const remote_command_t decoded = {.steering = (int16_t)steering,
+                                      .throttle = (int16_t)throttle,
+                                      .drive_mode = (uint8_t)mode,
+                                      .status = (remote_status_t)status,
+                                      .sequence = (uint8_t)sequence};
     if (!remote_command_valid(&decoded)) {
         return false;
     }

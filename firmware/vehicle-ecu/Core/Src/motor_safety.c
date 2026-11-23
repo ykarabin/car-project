@@ -3,16 +3,19 @@
 #include "main.h"
 #include "motor_config.h"
 
-#define SLP_PINS ((uint32_t)LEFT_MOTOR_SLP_Pin | (uint32_t)RIGHT_MOTOR_SLP_Pin | \
-                  (uint32_t)STEERING_MOTOR_SLP_Pin)
-#define FLT_PINS ((uint32_t)LEFT_MOTOR_FLT_Pin | (uint32_t)RIGHT_MOTOR_FLT_Pin | \
-                  (uint32_t)STEERING_MOTOR_FLT_Pin)
+#define SLP_PINS \
+    ((uint32_t)LEFT_MOTOR_SLP_Pin | (uint32_t)RIGHT_MOTOR_SLP_Pin | \
+     (uint32_t)STEERING_MOTOR_SLP_Pin)
+#define FLT_PINS \
+    ((uint32_t)LEFT_MOTOR_FLT_Pin | (uint32_t)RIGHT_MOTOR_FLT_Pin | \
+     (uint32_t)STEERING_MOTOR_FLT_Pin)
 #define SLP_MODE_MASK ((UINT32_C(3) << 16U) | (UINT32_C(3) << 18U) | (UINT32_C(3) << 20U))
 #define SLP_OUTPUT_MODE ((UINT32_C(1) << 16U) | (UINT32_C(1) << 18U) | (UINT32_C(1) << 20U))
 
 /* SLP and FLT are all on GPIOD. */
 _Static_assert(LEFT_MOTOR_SLP_Pin == GPIO_PIN_8 && RIGHT_MOTOR_SLP_Pin == GPIO_PIN_9 &&
-               STEERING_MOTOR_SLP_Pin == GPIO_PIN_10, "SLP GPIO mode masks");
+                   STEERING_MOTOR_SLP_Pin == GPIO_PIN_10,
+               "SLP GPIO mode masks");
 
 static volatile uint32_t s_latched_faults;
 static volatile motor_fault_snapshot_t s_first_fault;
@@ -20,10 +23,12 @@ static uint32_t s_last_wake_ms;
 static uint32_t s_last_wake_mask;
 
 _Static_assert(LEFT_MOTOR_FLT_Pin == GPIO_PIN_11 && RIGHT_MOTOR_FLT_Pin == GPIO_PIN_12 &&
-               STEERING_MOTOR_FLT_Pin == GPIO_PIN_13, "FLT filter pin mapping");
-_Static_assert(MOTOR_FAULT_CONFIRM_MS > 0U && MOTOR_FAULT_CONFIRM_MS < MOTOR_FAULT_PULSE_WINDOW_MS &&
-               MOTOR_FAULT_TRANSITION_MS <= MOTOR_FAULT_CONFIRM_MS &&
-               MOTOR_FAULT_PULSE_LIMIT >= 2U && MOTOR_FAULT_PULSE_LIMIT <= 8U,
+                   STEERING_MOTOR_FLT_Pin == GPIO_PIN_13,
+               "FLT filter pin mapping");
+_Static_assert(MOTOR_FAULT_CONFIRM_MS > 0U &&
+                   MOTOR_FAULT_CONFIRM_MS < MOTOR_FAULT_PULSE_WINDOW_MS &&
+                   MOTOR_FAULT_TRANSITION_MS <= MOTOR_FAULT_CONFIRM_MS &&
+                   MOTOR_FAULT_PULSE_LIMIT >= 2U && MOTOR_FAULT_PULSE_LIMIT <= 8U,
                "FLT filter bounds");
 
 typedef struct {
@@ -94,8 +99,7 @@ static void latch_faults(uint32_t faults, uint32_t slp, uint32_t low, uint32_t p
             .pending = fault_bits(pending),
             .at_ms = now,
             .wake_age_ms = (s_last_wake_mask != 0U) ? now - s_last_wake_ms : UINT32_MAX,
-            .wake_mask = s_last_wake_mask
-        };
+            .wake_mask = s_last_wake_mask};
     }
 }
 
@@ -193,8 +197,9 @@ bool motor_safety_wake(bool rear_enabled, bool steering_enabled)
     __disable_irq();
     bool allowed = (sample_faults(0U) == 0U) && ((GPIOD->IDR & FLT_PINS) == FLT_PINS);
     if (allowed) {
-        const uint16_t pins = (uint16_t)((rear_enabled ? LEFT_MOTOR_SLP_Pin | RIGHT_MOTOR_SLP_Pin : 0U) |
-                                         (steering_enabled ? STEERING_MOTOR_SLP_Pin : 0U));
+        const uint16_t pins =
+            (uint16_t)((rear_enabled ? LEFT_MOTOR_SLP_Pin | RIGHT_MOTOR_SLP_Pin : 0U) |
+                       (steering_enabled ? STEERING_MOTOR_SLP_Pin : 0U));
         const uint32_t rising = (uint32_t)pins & ~GPIOD->ODR;
         if (rising != 0U) {
             s_last_wake_ms = HAL_GetTick();

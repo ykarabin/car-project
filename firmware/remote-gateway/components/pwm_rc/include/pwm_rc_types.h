@@ -12,7 +12,8 @@ typedef struct {
     int64_t valid_since_us;
     int64_t channel_received_at_us[PWM_RC_CHANNEL_COUNT];
     int16_t normalized[PWM_RC_CHANNEL_COUNT];
-    uint32_t pulse_us[PWM_RC_CHANNEL_COUNT]; /* Raw pulse widths remain available when input is invalid. */
+    uint32_t pulse_us[PWM_RC_CHANNEL_COUNT]; /* Raw pulse widths remain available when input is
+                                                invalid. */
     uint32_t period_us[PWM_RC_CHANNEL_COUNT];
     uint32_t pulses;
     uint32_t errors;

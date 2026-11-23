@@ -5,16 +5,14 @@
 
 #include "wheel_speed.h"
 
-static bool init_speed(wheel_speed_t *speed, unsigned counter_bits, bool inverted,
-                       uint32_t counter, uint32_t now_ms)
+static bool init_speed(wheel_speed_t *speed, unsigned counter_bits, bool inverted, uint32_t counter,
+                       uint32_t now_ms)
 {
-    const wheel_speed_config_t config = {
-        .counts_per_motor_rev = 4096U,
-        .sample_ms = 10U,
-        .max_gap_ms = 50U,
-        .counter_bits = counter_bits,
-        .inverted = inverted
-    };
+    const wheel_speed_config_t config = {.counts_per_motor_rev = 4096U,
+                                         .sample_ms = 10U,
+                                         .max_gap_ms = 50U,
+                                         .counter_bits = counter_bits,
+                                         .inverted = inverted};
     return wheel_speed_init(speed, &config, counter, now_ms * 1000U);
 }
 
@@ -31,16 +29,26 @@ static wheel_speed_sample_t get_ms(const wheel_speed_t *speed, uint32_t now_ms)
 
 static void test_modular_counter_deltas(void)
 {
-    static const struct { uint32_t current; uint32_t previous; unsigned bits; int32_t delta; } cases[] = {
-        {100U, 100U, 16U, 0}, {110U, 100U, 16U, 10}, {90U, 100U, 16U, -10},
-        {3U, 65530U, 16U, 9}, {65530U, 3U, 16U, -9},
-        {0U, UINT32_MAX, 32U, 1}, {UINT32_MAX, 0U, 32U, -1},
-        {4U, UINT32_MAX - 4U, 32U, 9}, {UINT32_MAX - 4U, 4U, 32U, -9},
-        {INT32_MAX, 0U, 32U, INT32_MAX}, {0U, INT32_MAX, 32U, -INT32_MAX}
-    };
+    static const struct {
+        uint32_t current;
+        uint32_t previous;
+        unsigned bits;
+        int32_t delta;
+    } cases[] = {{100U, 100U, 16U, 0},
+                 {110U, 100U, 16U, 10},
+                 {90U, 100U, 16U, -10},
+                 {3U, 65530U, 16U, 9},
+                 {65530U, 3U, 16U, -9},
+                 {0U, UINT32_MAX, 32U, 1},
+                 {UINT32_MAX, 0U, 32U, -1},
+                 {4U, UINT32_MAX - 4U, 32U, 9},
+                 {UINT32_MAX - 4U, 4U, 32U, -9},
+                 {INT32_MAX, 0U, 32U, INT32_MAX},
+                 {0U, INT32_MAX, 32U, -INT32_MAX}};
     for (size_t i = 0U; i < sizeof(cases) / sizeof(cases[0]); ++i) {
         int32_t delta = 0;
-        assert(wheel_speed_counter_delta(cases[i].current, cases[i].previous, cases[i].bits, &delta));
+        assert(
+            wheel_speed_counter_delta(cases[i].current, cases[i].previous, cases[i].bits, &delta));
         assert(delta == cases[i].delta);
     }
     int32_t delta = 123;
@@ -128,10 +136,11 @@ static void test_clock_wrap_and_validation(void)
 
 static void test_low_resolution_window_and_recovery(void)
 {
-    wheel_speed_config_t config = {
-        .counts_per_motor_rev = 4U, .sample_ms = 200U, .max_gap_ms = 500U,
-        .counter_bits = 32U, .inverted = true
-    };
+    wheel_speed_config_t config = {.counts_per_motor_rev = 4U,
+                                   .sample_ms = 200U,
+                                   .max_gap_ms = 500U,
+                                   .counter_bits = 32U,
+                                   .inverted = true};
     wheel_speed_t speed;
     assert(wheel_speed_init(&speed, &config, 0U, 0U));
     /* Caller storage is not retained by the estimator. */
@@ -169,10 +178,11 @@ static void test_low_resolution_window_and_recovery(void)
 
 static void test_configuration_limits(void)
 {
-    const wheel_speed_config_t valid = {
-        .counts_per_motor_rev = 4096U, .sample_ms = 10U, .max_gap_ms = 50U,
-        .counter_bits = 16U, .inverted = false
-    };
+    const wheel_speed_config_t valid = {.counts_per_motor_rev = 4096U,
+                                        .sample_ms = 10U,
+                                        .max_gap_ms = 50U,
+                                        .counter_bits = 16U,
+                                        .inverted = false};
     wheel_speed_t speed;
     assert(!wheel_speed_init(&speed, NULL, 0U, 0U));
     wheel_speed_config_t config = valid;
@@ -198,10 +208,11 @@ static void test_configuration_limits(void)
 
 static void test_submillisecond_intervals_and_microsecond_wrap(void)
 {
-    const wheel_speed_config_t config = {
-        .counts_per_motor_rev = 4096U, .sample_ms = 10U, .max_gap_ms = 50U,
-        .counter_bits = 16U, .inverted = false
-    };
+    const wheel_speed_config_t config = {.counts_per_motor_rev = 4096U,
+                                         .sample_ms = 10U,
+                                         .max_gap_ms = 50U,
+                                         .counter_bits = 16U,
+                                         .inverted = false};
     wheel_speed_t speed;
     assert(wheel_speed_init(&speed, &config, 0U, 1000123U));
     /* 2560 counts in exactly 12.5 ms means 3000 RPM. Rounding the

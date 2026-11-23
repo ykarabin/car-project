@@ -22,11 +22,11 @@ typedef struct {
 bool steering_calibration_storage_available(void)
 {
     /* Require the expected bank layout before accessing reserved pages. */
-    return (FLASH_SIZE == UINT32_C(0x80000)) &&
-           ((FLASH->OPTR & FLASH_OPTR_DBANK) != 0U) &&
+    return (FLASH_SIZE == UINT32_C(0x80000)) && ((FLASH->OPTR & FLASH_OPTR_DBANK) != 0U) &&
            ((SYSCFG->MEMRMP & SYSCFG_MEMRMP_FB_MODE) == 0U) &&
            ((uintptr_t)&__steering_calibration_start__ == CAL_START_ADDRESS) &&
-           ((uintptr_t)&__steering_calibration_end__ == (CAL_START_ADDRESS + (2U * CAL_PAGE_BYTES)));
+           ((uintptr_t)&__steering_calibration_end__ ==
+            (CAL_START_ADDRESS + (2U * CAL_PAGE_BYTES)));
 }
 
 static uint32_t slot_address(uint32_t slot)
@@ -87,19 +87,16 @@ bool steering_calibration_storage_save(const steering_calibration_t *calibration
         return false;
     }
 
-    FLASH_EraseInitTypeDef erase = {
-        .TypeErase = FLASH_TYPEERASE_PAGES,
-        .Banks = FLASH_BANK_2,
-        .Page = 126U + slot,
-        .NbPages = 1U
-    };
+    FLASH_EraseInitTypeDef erase = {.TypeErase = FLASH_TYPEERASE_PAGES,
+                                    .Banks = FLASH_BANK_2,
+                                    .Page = 126U + slot,
+                                    .NbPages = 1U};
     if (HAL_FLASH_Unlock() != HAL_OK) {
         return false;
     }
     __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
     uint32_t page_error = UINT32_MAX;
-    bool success = (HAL_FLASHEx_Erase(&erase, &page_error) == HAL_OK) &&
-                   (page_error == UINT32_MAX);
+    bool success = (HAL_FLASHEx_Erase(&erase, &page_error) == HAL_OK) && (page_error == UINT32_MAX);
     for (size_t i = 0U; success && (i < STEERING_CAL_RECORD_WORDS); i += 2U) {
         const uint64_t value = (uint64_t)words[i] | ((uint64_t)words[i + 1U] << 32U);
         const uint32_t address = slot_address(slot) + ((uint32_t)i * 4U);

@@ -38,12 +38,12 @@ static void log_task(void *argument)
 bool vehicle_log_start(void)
 {
     s_log_queue = xQueueCreateStatic(VEHICLE_LOG_QUEUE_LENGTH, sizeof(log_record_t),
-                                 s_log_queue_storage, &s_log_queue_control);
+                                     s_log_queue_storage, &s_log_queue_control);
     if (s_log_queue == NULL) {
         return false;
     }
-    if (xTaskCreateStatic(log_task, "rttLog", VEHICLE_LOG_STACK_WORDS, NULL,
-                          LOG_TASK_PRIORITY, s_log_task_stack, &s_log_task_control) == NULL) {
+    if (xTaskCreateStatic(log_task, "rttLog", VEHICLE_LOG_STACK_WORDS, NULL, LOG_TASK_PRIORITY,
+                          s_log_task_stack, &s_log_task_control) == NULL) {
         s_log_queue = NULL;
         return false;
     }

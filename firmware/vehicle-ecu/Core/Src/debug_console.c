@@ -40,8 +40,8 @@ void debug_console_printf_at(uint32_t captured_at_ms, const char *format, ...)
         buffer[offset + used - 2U] = '.';
         buffer[offset + used - 1U] = '.';
     }
-    while ((used != 0U) && ((buffer[offset + used - 1U] == '\r') ||
-                            (buffer[offset + used - 1U] == '\n'))) {
+    while ((used != 0U) &&
+           ((buffer[offset + used - 1U] == '\r') || (buffer[offset + used - 1U] == '\n'))) {
         --used;
     }
     buffer[offset + used] = '\r';
@@ -51,4 +51,3 @@ void debug_console_printf_at(uint32_t captured_at_ms, const char *format, ...)
     /* Write the whole line or drop it without blocking. */
     (void)SEGGER_RTT_Write(0U, buffer, length);
 }
-

@@ -47,8 +47,14 @@ void HAL_GPIO_WritePin(GPIO_TypeDef *gpio, uint16_t pin, GPIO_PinState state)
     gpio->ODR = state == GPIO_PIN_SET ? pin : 0U;
 }
 
-uint32_t HAL_GetTick(void) { return s_now; }
-bool control_watchdog_was_reset(void) { return s_watchdog_reset; }
+uint32_t HAL_GetTick(void)
+{
+    return s_now;
+}
+bool control_watchdog_was_reset(void)
+{
+    return s_watchdog_reset;
+}
 
 /* Immediate consumer fake keeps the existing golden text assertions.
  * Queue ownership/copy/full/delayed timestamp are tested with real transport
@@ -78,7 +84,7 @@ void debug_console_printf_at(uint32_t captured_at_ms, const char *format, ...)
 void motor_control_apply(const motor_request_t *request)
 {
     s_output = (request == NULL) ? OUTPUT_DISABLED :
-                (request->rear_enabled ? OUTPUT_NORMAL : OUTPUT_SERVICE);
+                                   (request->rear_enabled ? OUTPUT_NORMAL : OUTPUT_SERVICE);
     s_steering_enabled = (request != NULL) && request->steering_enabled;
     if (request != NULL) {
         assert(request->rear_pwm >= -1000 && request->rear_pwm <= 1000);
@@ -92,10 +98,15 @@ void motor_control_apply(const motor_request_t *request)
     }
 }
 
-bool steering_calibration_storage_available(void) { return true; }
+bool steering_calibration_storage_available(void)
+{
+    return true;
+}
 bool steering_calibration_storage_load(steering_calibration_t *calibration)
 {
-    if (!s_flash_valid) return false;
+    if (!s_flash_valid) {
+        return false;
+    }
     *calibration = s_flash;
     return true;
 }
@@ -105,7 +116,9 @@ bool steering_calibration_storage_save(const steering_calibration_t *calibration
     assert(s_output == OUTPUT_DISABLED); /* Hardware must be off before Flash operations. */
     assert(steering_calibration_valid(calibration));
     ++s_save_calls;
-    if (s_flash_fail) return false;
+    if (s_flash_fail) {
+        return false;
+    }
     s_flash = *calibration;
     s_flash_valid = true;
     return true;
@@ -168,8 +181,11 @@ static void test_calibration_neutral_boundary(void)
     for (uint32_t axis = 0U; axis < 2U; ++axis) {
         for (size_t i = 0U; i < sizeof(requests) / sizeof(requests[0]); ++i) {
             init();
-            if (axis == 0U) s_remote.throttle = requests[i];
-            else s_remote.steering = requests[i];
+            if (axis == 0U) {
+                s_remote.throttle = requests[i];
+            } else {
+                s_remote.steering = requests[i];
+            }
             button(3000U);
             if (requests[i] >= -30 && requests[i] <= 30) {
                 assert(s_output == OUTPUT_SERVICE);
@@ -198,7 +214,8 @@ static void test_capture_save_reload_and_limits(void)
     s_remote.steering = 800;
     s_remote.throttle = 500;
     tick(0U);
-    assert(s_last_output.rear_pwm == 0 && s_last_output.steering_pwm == 0); /* Drive first seeds time. */
+    assert(s_last_output.rear_pwm == 0 &&
+           s_last_output.steering_pwm == 0); /* Drive first seeds time. */
     tick(10U);
     assert(s_last_output.rear_pwm > 0 && s_last_output.rear_pwm <= DRIVE_CONTROL_PWM_RISE_STEP);
     button(3000U);
@@ -222,16 +239,20 @@ static void test_capture_save_reload_and_limits(void)
     tick(1U);
     tick(10U);
     tick(10U);
-    assert(s_last_output.steering_pwm < 0); /* Pull physical right endpoint inside the working range. */
+    assert(s_last_output.steering_pwm <
+           0); /* Pull physical right endpoint inside the working range. */
     s_remote.steering = -1000;
     tick(10U);
-    assert(s_last_output.steering_pwm < 0 && s_last_output.steering_pwm >= -STEERING_CONTROL_PWM_MAX);
+    assert(s_last_output.steering_pwm < 0 &&
+           s_last_output.steering_pwm >= -STEERING_CONTROL_PWM_MAX);
     s_encoder.raw = 500U;
     tick(10U);
-    assert(s_last_output.steering_pwm >= 0); /* Outward negative drive at the left limit is blocked. */
+    assert(s_last_output.steering_pwm >=
+           0); /* Outward negative drive at the left limit is blocked. */
     s_remote.steering = 1000;
     tick(10U);
-    assert(s_last_output.steering_pwm > 0 && s_last_output.steering_pwm <= STEERING_CONTROL_PWM_MAX);
+    assert(s_last_output.steering_pwm > 0 &&
+           s_last_output.steering_pwm <= STEERING_CONTROL_PWM_MAX);
     s_encoder.state = STEERING_ENCODER_STALE;
     tick(1U);
     assert(s_last_output.steering_pwm > 0);
@@ -260,7 +281,8 @@ static void test_partial_geometry_and_failed_save_keep_previous_record(void)
     s_flash_fail = true;
     button_capture(1650U);
     assert(s_save_calls == 2U && s_output == OUTPUT_SERVICE && s_jog == 0);
-    assert(s_flash.center == saved.center && s_flash.left == saved.left && s_flash.right == saved.right);
+    assert(s_flash.center == saved.center && s_flash.left == saved.left &&
+           s_flash.right == saved.right);
     s_flash_fail = false;
     button(50U); /* Retry the right point and automatic save. */
     assert(s_save_calls == 3U && s_flash_valid);
@@ -294,7 +316,8 @@ static void test_cancel_remote_loss_and_encoder_loss(void)
     assert(s_output == OUTPUT_DISABLED);
     tick(1U);
     assert(s_output == OUTPUT_NORMAL);
-    assert(s_flash.center == saved.center && s_flash.left == saved.left && s_flash.right == saved.right);
+    assert(s_flash.center == saved.center && s_flash.left == saved.left &&
+           s_flash.right == saved.right);
     assert(s_save_calls == 1U);
 }
 
@@ -368,7 +391,9 @@ static void test_reverse_brake_gesture_reaches_motor_output(void)
     s_remote.drive_mode = 3U;
     s_remote.throttle = 1000;
     tick(10U);
-    for (uint32_t i = 0U; i < 30U; ++i) tick(10U);
+    for (uint32_t i = 0U; i < 30U; ++i) {
+        tick(10U);
+    }
     const int16_t before = s_last_output.rear_pwm;
     assert(before > 100);
     s_remote.throttle = -1000;
@@ -417,15 +442,21 @@ static void test_neutral_stop_then_first_reverse_reaches_motor_output(void)
     s_remote.drive_mode = 3U;
     s_remote.throttle = 1000;
     tick(10U);
-    for (uint32_t i = 0U; i < 30U; ++i) tick(10U);
+    for (uint32_t i = 0U; i < 30U; ++i) {
+        tick(10U);
+    }
     assert(s_last_output.rear_pwm > 100);
     s_remote.throttle = 0;
-    for (uint32_t i = 0U; i < 200U; ++i) tick(10U);
+    for (uint32_t i = 0U; i < 200U; ++i) {
+        tick(10U);
+    }
     assert(s_output == OUTPUT_NORMAL && s_last_output.rear_pwm == 0);
     vehicle_control_log_status("OK", s_remote.drive_mode, &s_encoder, &s_right_speed);
     assert(strstr(s_log, "DRIVE STOP") != NULL);
     s_remote.throttle = -1000;
-    for (uint32_t i = 0U; i < 13U; ++i) tick(10U);
+    for (uint32_t i = 0U; i < 13U; ++i) {
+        tick(10U);
+    }
     assert(s_output == OUTPUT_NORMAL && s_last_output.rear_pwm < 0);
 }
 
@@ -436,7 +467,9 @@ static void finish_center_return(void)
     tick(1U);
     for (uint32_t elapsed = 0U;
          elapsed <= STEERING_CONTROL_RELEASE_SETTLE_MS + 2U * STEERING_CONTROL_PERIOD_MS;
-         elapsed += STEERING_CONTROL_PERIOD_MS) tick(STEERING_CONTROL_PERIOD_MS);
+         elapsed += STEERING_CONTROL_PERIOD_MS) {
+        tick(STEERING_CONTROL_PERIOD_MS);
+    }
     assert(!s_steering_enabled && s_last_output.steering_pwm == 0);
 }
 
@@ -469,7 +502,8 @@ static void test_manual_steering_preserves_remote_throttle_and_resets_takeover(v
     assert(s_steering_enabled && s_last_output.steering_pwm == STEERING_CONTROL_PWM_STEP);
     s_encoder.raw = 1582U; /* Working right target for the test calibration. */
     tick(10U);
-    assert(s_steering_enabled && s_last_output.steering_pwm == 0); /* Hold is still remote ownership. */
+    assert(s_steering_enabled &&
+           s_last_output.steering_pwm == 0); /* Hold is still remote ownership. */
     s_remote.steering = 0;
     tick(1U);
     assert(s_steering_enabled); /* Centering precedes manual release. */
@@ -514,11 +548,15 @@ static void test_manual_steering_deadband_feedback_and_remote_loss(void)
     s_remote.steering = 0;
     tick(1U); /* A brief feedback loss may finish recovering before release. */
     assert(s_steering_enabled);
-    for (uint32_t i = 0U; i < 4U; ++i) tick(10U);
+    for (uint32_t i = 0U; i < 4U; ++i) {
+        tick(10U);
+    }
     assert(!s_steering_enabled && s_last_output.steering_pwm == 0);
     assert(strstr(s_log, "STEER_RELEASE FEEDBACK") != NULL);
     s_remote.throttle = 1000;
-    for (uint32_t i = 0U; i < 10U; ++i) tick(10U);
+    for (uint32_t i = 0U; i < 10U; ++i) {
+        tick(10U);
+    }
     assert(s_output == OUTPUT_NORMAL && s_last_output.rear_pwm > 0 && !s_steering_enabled);
     s_remote.status = REMOTE_STATUS_ERROR;
     tick(1U);
@@ -557,7 +595,9 @@ static void test_tracking_feedback_timeout_does_not_arm_center_return(void)
         tick(10U);
         assert(s_last_output.rear_pwm > 0);
         s_encoder.state = STEERING_ENCODER_INVALID;
-        for (uint32_t i = 0U; i < 3U; ++i) tick(10U);
+        for (uint32_t i = 0U; i < 3U; ++i) {
+            tick(10U);
+        }
         tick(9U);
         assert(s_steering_enabled); /* 39 ms retains the existing short-fault grace. */
         tick(1U);
@@ -565,7 +605,9 @@ static void test_tracking_feedback_timeout_does_not_arm_center_return(void)
         assert(s_last_output.rear_pwm > 0);
         assert(strstr(s_log, "STEER_RELEASE FEEDBACK") != NULL);
         const size_t log_after_fault = s_log_used;
-        for (uint32_t i = 0U; i < 10U; ++i) tick(10U);
+        for (uint32_t i = 0U; i < 10U; ++i) {
+            tick(10U);
+        }
         assert(!s_steering_enabled && s_log_used == log_after_fault);
 
         /* Recovery with a neutral stick must not turn the old REMOTE state
@@ -665,7 +707,8 @@ static void test_center_return_timeout_and_clock_wrap(void)
         s_remote.steering = 0;
         s_remote.throttle = 500;
         tick(1U);
-        for (uint32_t elapsed = 10U; elapsed < STEERING_CONTROL_RELEASE_TIMEOUT_MS; elapsed += 10U) {
+        for (uint32_t elapsed = 10U; elapsed < STEERING_CONTROL_RELEASE_TIMEOUT_MS;
+             elapsed += 10U) {
             tick(10U);
             assert(s_steering_enabled && s_last_output.steering_pwm <= 0);
         }
@@ -708,7 +751,9 @@ static void test_fault_and_service_cancel_center_return_without_restart(void)
             test_gpioc.IDR = GPIO_PIN_13;
             tick(1U);
             tick(30U);
-            for (uint32_t i = 0U; i < 280U; ++i) tick(10U);
+            for (uint32_t i = 0U; i < 280U; ++i) {
+                tick(10U);
+            }
         }
         s_remote.steering = 0;
         tick(1U);
@@ -722,7 +767,9 @@ static void test_fault_and_service_cancel_center_return_without_restart(void)
             tick(1U);
             assert(s_output == OUTPUT_DISABLED);
         } else {
-            for (uint32_t i = 0U; i < 19U; ++i) tick(10U);
+            for (uint32_t i = 0U; i < 19U; ++i) {
+                tick(10U);
+            }
             assert(s_output == OUTPUT_SERVICE);
             assert(strstr(s_log, "STEER_RELEASE TIMEOUT") == NULL);
             test_gpioc.IDR = 0U;

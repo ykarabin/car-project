@@ -1,7 +1,6 @@
 #include "remote_source.h"
 
-remote_source_t remote_source_select(remote_source_t active,
-                                     bool elrs_valid, int64_t elrs_since_us,
+remote_source_t remote_source_select(remote_source_t active, bool elrs_valid, int64_t elrs_since_us,
                                      bool pwm_valid, int64_t pwm_since_us)
 {
     if (active == REMOTE_SOURCE_ELRS) {

@@ -8,18 +8,15 @@
 
 static remote_command_t command(int16_t throttle, uint8_t mode)
 {
-    return (remote_command_t){.throttle = throttle, .drive_mode = mode,
-                              .status = REMOTE_STATUS_OK};
+    return (remote_command_t){.throttle = throttle, .drive_mode = mode, .status = REMOTE_STATUS_OK};
 }
 
 static wheel_speed_sample_t feedback(int32_t speed)
 {
-    return (wheel_speed_sample_t){.state = WHEEL_SPEED_OK, .interval_ms = 10U,
-                                  .speed_mm_s = speed};
+    return (wheel_speed_sample_t){.state = WHEEL_SPEED_OK, .interval_ms = 10U, .speed_mm_s = speed};
 }
 
-static void prepare_reverse_from_rest(drive_controller_t *controller,
-                                      remote_command_t *input,
+static void prepare_reverse_from_rest(drive_controller_t *controller, remote_command_t *input,
                                       const wheel_speed_sample_t *right)
 {
     input->throttle = -1000;
@@ -47,11 +44,13 @@ static void test_mode_mapping_and_deadband(void)
             remote_command_t input = command((int16_t)throttle, mode);
             assert(drive_controller_update(&controller, &input, &right, 0U) == 0);
             const int32_t magnitude = (throttle < 0) ? -throttle : throttle;
-            const int32_t expected = (magnitude <= 30) ? 0 :
-                                     ((magnitude - 30) * maximums[mode - 1U] / 970);
+            const int32_t expected =
+                (magnitude <= 30) ? 0 : ((magnitude - 30) * maximums[mode - 1U] / 970);
             assert(controller.target_mm_s == ((throttle < 0) ? -expected : expected));
             assert(controller.full_power_requested == ((mode == 3U) && (magnitude >= 990)));
-            if (mode < 3U) assert(expected <= maximums[mode - 1U]);
+            if (mode < 3U) {
+                assert(expected <= maximums[mode - 1U]);
+            }
         }
     }
 }
@@ -159,7 +158,8 @@ static void test_reversal_and_opposite_startup_motion(void)
 
 static void test_invalid_feedback_input_and_timing(void)
 {
-    const wheel_speed_state_t bad_states[] = {WHEEL_SPEED_WAITING, WHEEL_SPEED_INVALID, WHEEL_SPEED_STALE};
+    const wheel_speed_state_t bad_states[] = {WHEEL_SPEED_WAITING, WHEEL_SPEED_INVALID,
+                                              WHEEL_SPEED_STALE};
     remote_command_t input = command(1000, 3U);
     wheel_speed_sample_t right = feedback(0);
     drive_controller_t controller = {0};
@@ -261,15 +261,21 @@ static void test_mode_changes_preserve_integrator_and_slew_both_directions(void)
     const int16_t requests[] = {-1000, -700, -31, 0, 31, 600, 1000};
     for (uint32_t now = 2010U; now < 102010U; now += 10U) {
         seed = seed * UINT32_C(1664525) + UINT32_C(1013904223);
-        if ((now % 70U) == 0U) input.drive_mode = (uint8_t)(1U + (seed % 3U));
-        if ((now % 110U) == 0U) input.throttle = requests[(seed >> 8) % 7U];
+        if ((now % 70U) == 0U) {
+            input.drive_mode = (uint8_t)(1U + (seed % 3U));
+        }
+        if ((now % 110U) == 0U) {
+            input.throttle = requests[(seed >> 8) % 7U];
+        }
         right.speed_mm_s = (previous < 0) ? -700 : 700;
         const int16_t pwm = drive_controller_update(&controller, &input, &right, now);
         const int32_t magnitude = (pwm < 0) ? -(int32_t)pwm : pwm;
         const int32_t previous_magnitude = (previous < 0) ? -(int32_t)previous : previous;
         const int32_t change = magnitude - previous_magnitude;
         const int32_t fall = ((controller.state == DRIVE_CONTROL_BRAKING) ||
-                               (controller.state == DRIVE_CONTROL_REVERSING)) ? 20 : 10;
+                              (controller.state == DRIVE_CONTROL_REVERSING)) ?
+                                 20 :
+                                 10;
         assert(change >= -fall && change <= 10);
         assert(!((previous > 0 && pwm < 0) || (previous < 0 && pwm > 0)));
         /* Repeated input changes must not bypass the 10 ms output cadence. */
@@ -339,7 +345,9 @@ static void test_rejection_of_load_disturbance_in_simple_plant(void)
             assert(output >= 0 && output <= 1000);
             const int32_t load = (step < 500U) ? 0 : 350;
             int32_t equilibrium = (int32_t)output * 2800 - load * 1000;
-            if (equilibrium < 0) equilibrium = 0;
+            if (equilibrium < 0) {
+                equilibrium = 0;
+            }
             velocity_milli += (equilibrium - velocity_milli) / 12;
             if ((mode == 0U) && (step < 500U) && (velocity_milli > startup_peak)) {
                 startup_peak = velocity_milli;
@@ -349,7 +357,9 @@ static void test_rejection_of_load_disturbance_in_simple_plant(void)
         const int32_t actual = velocity_milli / 1000;
         /* Regression for the excessive initial feed-forward seen on the
          * raised vehicle. This model bounds startup, not road performance. */
-        if (mode == 0U) assert(startup_peak <= 1200000);
+        if (mode == 0U) {
+            assert(startup_peak <= 1200000);
+        }
         if (modes[mode] == 3U) {
             assert(controller.pwm == 1000 && actual > DRIVE_CONTROL_NOMINAL_MM_S);
         } else {
@@ -486,7 +496,9 @@ static void test_startup_and_faults_do_not_grant_reverse_from_idle_neutral(void)
                 right.state = WHEEL_SPEED_OK;
             } else if (fault == 3U) {
                 assert(drive_controller_update(&controller, &input, &right, 150U) == 0);
-            } else drive_controller_stop(&controller);
+            } else {
+                drive_controller_stop(&controller);
+            }
         }
         input.throttle = 0;
         for (uint32_t now = 200U; now <= 2000U; now += 10U) {

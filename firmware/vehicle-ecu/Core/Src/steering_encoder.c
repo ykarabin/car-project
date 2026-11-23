@@ -62,8 +62,8 @@ void steering_encoder_irq(void)
     s_last_edge_ms = now;
 
     /* A new CC1 flag after reading CCR1 means the capture changed mid-snapshot. */
-    const bool overrun = (((before | after) & OVERRUN_FLAGS) != 0U) ||
-                         ((after & TIM_FLAG_CC1) != 0U);
+    const bool overrun =
+        (((before | after) & OVERRUN_FLAGS) != 0U) || ((after & TIM_FLAG_CC1) != 0U);
     /* Discard the first boundary after startup or lost capture. */
     if (!s_synchronized) {
         s_synchronized = !overrun;

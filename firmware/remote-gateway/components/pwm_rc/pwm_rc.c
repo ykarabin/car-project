@@ -21,17 +21,15 @@
 #define PWM_THROTTLE_INVERTED false
 #endif
 
-static const int s_gpio[PWM_RC_CHANNEL_COUNT] = {
-    CONFIG_PWM_RC_CH1_GPIO, CONFIG_PWM_RC_CH2_GPIO, CONFIG_PWM_RC_CH3_GPIO
-};
+static const int s_gpio[PWM_RC_CHANNEL_COUNT] = {CONFIG_PWM_RC_CH1_GPIO, CONFIG_PWM_RC_CH2_GPIO,
+                                                 CONFIG_PWM_RC_CH3_GPIO};
 
 static const pwm_calibration_t s_calibration[PWM_RC_CHANNEL_COUNT] = {
-    {CONFIG_PWM_RC_MIN_US, CONFIG_PWM_RC_CENTER_US, CONFIG_PWM_RC_MAX_US,
-     CONFIG_PWM_RC_DEADBAND_US, PWM_STEERING_INVERTED},
-    {CONFIG_PWM_RC_THROTTLE_MIN_US, CONFIG_PWM_RC_THROTTLE_CENTER_US,
-     CONFIG_PWM_RC_THROTTLE_MAX_US, CONFIG_PWM_RC_DEADBAND_US, PWM_THROTTLE_INVERTED},
-    {CONFIG_PWM_RC_MIN_US, CONFIG_PWM_RC_CENTER_US, CONFIG_PWM_RC_MAX_US, 0U, false}
-};
+    {CONFIG_PWM_RC_MIN_US, CONFIG_PWM_RC_CENTER_US, CONFIG_PWM_RC_MAX_US, CONFIG_PWM_RC_DEADBAND_US,
+     PWM_STEERING_INVERTED},
+    {CONFIG_PWM_RC_THROTTLE_MIN_US, CONFIG_PWM_RC_THROTTLE_CENTER_US, CONFIG_PWM_RC_THROTTLE_MAX_US,
+     CONFIG_PWM_RC_DEADBAND_US, PWM_THROTTLE_INVERTED},
+    {CONFIG_PWM_RC_MIN_US, CONFIG_PWM_RC_CENTER_US, CONFIG_PWM_RC_MAX_US, 0U, false}};
 
 static mcpwm_cap_timer_handle_t s_timer;
 static mcpwm_cap_channel_handle_t s_channel[PWM_RC_CHANNEL_COUNT];
@@ -47,14 +45,14 @@ static bool capture_edge(mcpwm_cap_channel_handle_t channel,
     const size_t index = *(const size_t *)context;
     const int64_t now_us = esp_timer_get_time();
     portENTER_CRITICAL_ISR(&s_lock);
-    pwm_decoder_capture(&s_decoder, index, event->cap_edge == MCPWM_CAP_EDGE_POS,
-                         event->cap_value, now_us);
+    pwm_decoder_capture(&s_decoder, index, event->cap_edge == MCPWM_CAP_EDGE_POS, event->cap_value,
+                        now_us);
     portEXIT_CRITICAL_ISR(&s_lock);
     return false;
 }
 
-static void release_capture(const bool enabled[PWM_RC_CHANNEL_COUNT],
-                             bool timer_enabled, bool timer_started)
+static void release_capture(const bool enabled[PWM_RC_CHANNEL_COUNT], bool timer_enabled,
+                            bool timer_started)
 {
     for (size_t index = 0U; index < PWM_RC_CHANNEL_COUNT; ++index) {
         if (enabled[index]) {
@@ -83,8 +81,7 @@ esp_err_t pwm_rc_start(void)
         return ESP_ERR_INVALID_STATE;
     }
     for (size_t index = 0U; index < PWM_RC_CHANNEL_COUNT; ++index) {
-        if (!GPIO_IS_VALID_GPIO(s_gpio[index]) ||
-            (s_gpio[index] == CONFIG_ELRS_RX_GPIO) ||
+        if (!GPIO_IS_VALID_GPIO(s_gpio[index]) || (s_gpio[index] == CONFIG_ELRS_RX_GPIO) ||
             (s_gpio[index] == CONFIG_REMOTE_UART_TX_GPIO) ||
             !pwm_calibration_valid(&s_calibration[index])) {
             return ESP_ERR_INVALID_ARG;
@@ -96,10 +93,8 @@ esp_err_t pwm_rc_start(void)
         }
     }
 
-    const mcpwm_capture_timer_config_t timer_config = {
-        .group_id = 0,
-        .clk_src = MCPWM_CAPTURE_CLK_SRC_DEFAULT
-    };
+    const mcpwm_capture_timer_config_t timer_config = {.group_id = 0,
+                                                       .clk_src = MCPWM_CAPTURE_CLK_SRC_DEFAULT};
     esp_err_t error = mcpwm_new_capture_timer(&timer_config, &s_timer);
     if (error != ESP_OK) {
         return error;
@@ -128,15 +123,14 @@ esp_err_t pwm_rc_start(void)
         const mcpwm_capture_channel_config_t config = {
             .gpio_num = s_gpio[index],
             .prescale = 1U,
-            .flags = {.pos_edge = true, .neg_edge = true}
-        };
+            .flags = {.pos_edge = true, .neg_edge = true}};
         error = mcpwm_new_capture_channel(s_timer, &config, &s_channel[index]);
         if (error == ESP_OK) {
             error = gpio_set_pull_mode(s_gpio[index], GPIO_PULLDOWN_ONLY);
         }
         if (error == ESP_OK) {
-            error = mcpwm_capture_channel_register_event_callbacks(
-                s_channel[index], &callbacks, &s_index[index]);
+            error = mcpwm_capture_channel_register_event_callbacks(s_channel[index], &callbacks,
+                                                                   &s_index[index]);
         }
         if (error == ESP_OK) {
             error = mcpwm_capture_channel_enable(s_channel[index]);
@@ -166,6 +160,6 @@ esp_err_t pwm_rc_get_sample(pwm_rc_sample_t *sample)
     snapshot = s_decoder;
     portEXIT_CRITICAL(&s_lock);
     pwm_decoder_sample(&snapshot, s_calibration, esp_timer_get_time(),
-                        (int64_t)CONFIG_PWM_RC_TIMEOUT_MS * INT64_C(1000), sample);
+                       (int64_t)CONFIG_PWM_RC_TIMEOUT_MS * INT64_C(1000), sample);
     return ESP_OK;
 }

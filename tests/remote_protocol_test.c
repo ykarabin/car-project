@@ -30,11 +30,9 @@ static void test_fixed_vectors(void)
     static const struct {
         remote_command_t command;
         const char *line;
-    } vectors[] = {
-        {{-321, 654, 2U, REMOTE_STATUS_OK, 42U}, "RC,-321,654,2,0,42*C6DA\n"},
-        {{0, 0, 1U, REMOTE_STATUS_ERROR, 0U}, "RC,0,0,1,1,0*2A6A\n"},
-        {{-1000, 1000, 3U, REMOTE_STATUS_OK, 255U}, "RC,-1000,1000,3,0,255*D0CD\n"}
-    };
+    } vectors[] = {{{-321, 654, 2U, REMOTE_STATUS_OK, 42U}, "RC,-321,654,2,0,42*C6DA\n"},
+                   {{0, 0, 1U, REMOTE_STATUS_ERROR, 0U}, "RC,0,0,1,1,0*2A6A\n"},
+                   {{-1000, 1000, 3U, REMOTE_STATUS_OK, 255U}, "RC,-1000,1000,3,0,255*D0CD\n"}};
     for (size_t i = 0U; i < sizeof(vectors) / sizeof(vectors[0]); ++i) {
         char line[REMOTE_LINE_SIZE];
         const int length = remote_command_format(line, sizeof(line), &vectors[i].command);
@@ -50,8 +48,8 @@ static void test_fixed_vectors(void)
 static void test_ranges_and_buffers(void)
 {
     for (int value = -1000; value <= 1000; ++value) {
-        const remote_command_t input = {(int16_t)value, (int16_t)-value, 2U,
-                                         REMOTE_STATUS_OK, (uint8_t)(value + 1000)};
+        const remote_command_t input = {(int16_t)value, (int16_t)-value, 2U, REMOTE_STATUS_OK,
+                                        (uint8_t)(value + 1000)};
         char line[REMOTE_LINE_SIZE];
         assert(remote_command_format(line, sizeof(line), &input) > 0);
         remote_parser_t parser = {0};
@@ -67,17 +65,18 @@ static void test_ranges_and_buffers(void)
         char buffer[REMOTE_LINE_SIZE];
         (void)memset(buffer, 0x55, sizeof(buffer));
         assert(remote_command_format(buffer, size, &input) == -1);
-        for (size_t i = size; i < sizeof(buffer); ++i) assert(buffer[i] == 0x55);
+        for (size_t i = size; i < sizeof(buffer); ++i) {
+            assert(buffer[i] == 0x55);
+        }
     }
     assert(remote_command_format(NULL, 0U, &input) == -1);
     assert(remote_command_format(expected, sizeof(expected), NULL) == -1);
     const remote_command_t invalid[] = {
         {1001, 0, 1U, REMOTE_STATUS_OK, 0U}, {-1001, 0, 1U, REMOTE_STATUS_OK, 0U},
         {0, 1001, 1U, REMOTE_STATUS_OK, 0U}, {0, -1001, 1U, REMOTE_STATUS_OK, 0U},
-        {0, 0, 0U, REMOTE_STATUS_OK, 0U}, {0, 0, 4U, REMOTE_STATUS_OK, 0U},
-        {0, 0, 1U, (remote_status_t)2, 0U}, {1, 0, 1U, REMOTE_STATUS_ERROR, 0U},
-        {0, -1, 1U, REMOTE_STATUS_ERROR, 0U}
-    };
+        {0, 0, 0U, REMOTE_STATUS_OK, 0U},    {0, 0, 4U, REMOTE_STATUS_OK, 0U},
+        {0, 0, 1U, (remote_status_t)2, 0U},  {1, 0, 1U, REMOTE_STATUS_ERROR, 0U},
+        {0, -1, 1U, REMOTE_STATUS_ERROR, 0U}};
     for (size_t i = 0U; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
         assert(remote_command_format(expected, sizeof(expected), &invalid[i]) == -1);
     }
@@ -86,14 +85,26 @@ static void test_ranges_and_buffers(void)
 static void test_bad_lines(void)
 {
     /* CRC is intentionally valid, so these cases exercise syntax/range checks. */
-    const char *bodies[] = {
-        "RC,1001,0,1,0,1", "RC,-1001,0,1,0,1", "RC,0,-1001,1,0,1",
-        "RC,0,1001,1,0,1", "RC,0,0,0,0,1", "RC,0,0,4,0,1", "RC,0,0,1,2,1",
-        "RC,1,0,1,1,1", "RC,0,-1,1,1,1", "RC,0,0,1,0,256", "RC,0,0,1,0,-1",
-        "RC,0,0,1,0,-0", "RC,0,0,1,0,1,7", "RC,0,0,1,0,", "RC,,0,1,0,1",
-        "RC,+1,0,1,0,1", "RC, 1,0,1,0,1", "RC,1.5,0,1,0,1",
-        "RC,999999999999999999999999999,0,1,0,1", "XX,0,0,1,0,1"
-    };
+    const char *bodies[] = {"RC,1001,0,1,0,1",
+                            "RC,-1001,0,1,0,1",
+                            "RC,0,-1001,1,0,1",
+                            "RC,0,1001,1,0,1",
+                            "RC,0,0,0,0,1",
+                            "RC,0,0,4,0,1",
+                            "RC,0,0,1,2,1",
+                            "RC,1,0,1,1,1",
+                            "RC,0,-1,1,1,1",
+                            "RC,0,0,1,0,256",
+                            "RC,0,0,1,0,-1",
+                            "RC,0,0,1,0,-0",
+                            "RC,0,0,1,0,1,7",
+                            "RC,0,0,1,0,",
+                            "RC,,0,1,0,1",
+                            "RC,+1,0,1,0,1",
+                            "RC, 1,0,1,0,1",
+                            "RC,1.5,0,1,0,1",
+                            "RC,999999999999999999999999999,0,1,0,1",
+                            "XX,0,0,1,0,1"};
     for (size_t i = 0U; i < sizeof(bodies) / sizeof(bodies[0]); ++i) {
         char line[128];
         (void)snprintf(line, sizeof(line), "%s*%04X\n", bodies[i],
@@ -104,10 +115,9 @@ static void test_bad_lines(void)
         assert(feed(&parser, line, &decoded) == 0U);
         same_command(&decoded, &unchanged);
     }
-    const char *invalid_crc[] = {
-        "RC,0,0,1,0,1\n", "RC,0,0,1,0,1*0000\n", "RC,0,0,1,0,1*ZZZZ\n",
-        "RC,0,0,1,0,1*123\n", "RC,0,0,1,0,1*12345\n", "RC,0,0,1,0,1*1234junk\n"
-    };
+    const char *invalid_crc[] = {"RC,0,0,1,0,1\n",       "RC,0,0,1,0,1*0000\n",
+                                 "RC,0,0,1,0,1*ZZZZ\n",  "RC,0,0,1,0,1*123\n",
+                                 "RC,0,0,1,0,1*12345\n", "RC,0,0,1,0,1*1234junk\n"};
     for (size_t i = 0U; i < sizeof(invalid_crc) / sizeof(invalid_crc[0]); ++i) {
         remote_parser_t parser = {0};
         remote_command_t decoded;
@@ -154,8 +164,10 @@ static void test_stream_recovery(void)
             remote_parser_reset(&parser);
             unsigned decoded = 0U;
             for (size_t j = 0U; j < strlen(valid); ++j) {
-                decoded += (remote_parser_push(&parser, (uint8_t)damaged[j], &command)
-                            == REMOTE_PARSE_COMMAND) ? 1U : 0U;
+                decoded += (remote_parser_push(&parser, (uint8_t)damaged[j], &command) ==
+                            REMOTE_PARSE_COMMAND) ?
+                               1U :
+                               0U;
             }
             assert(decoded == 0U);
         }

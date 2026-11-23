@@ -15,10 +15,22 @@ static bool s_ch1_started;
 static bool s_fail_start;
 static bool s_fail_start_it;
 
-uint32_t HAL_GetTick(void) { return s_now; }
-uint32_t __get_PRIMASK(void) { return s_irq_mask; }
-void __disable_irq(void) { s_irq_mask = 1U; }
-void __set_PRIMASK(uint32_t mask) { s_irq_mask = mask; }
+uint32_t HAL_GetTick(void)
+{
+    return s_now;
+}
+uint32_t __get_PRIMASK(void)
+{
+    return s_irq_mask;
+}
+void __disable_irq(void)
+{
+    s_irq_mask = 1U;
+}
+void __set_PRIMASK(uint32_t mask)
+{
+    s_irq_mask = mask;
+}
 
 void test_tim_clear_flags(TIM_HandleTypeDef *timer, uint32_t flags)
 {
@@ -28,7 +40,9 @@ void test_tim_clear_flags(TIM_HandleTypeDef *timer, uint32_t flags)
 HAL_StatusTypeDef HAL_TIM_IC_Start(TIM_HandleTypeDef *timer, uint32_t channel)
 {
     assert(timer->Instance == TIM4 && channel == TIM_CHANNEL_2);
-    if (s_fail_start) return HAL_ERROR;
+    if (s_fail_start) {
+        return HAL_ERROR;
+    }
     s_ch2_started = true;
     return HAL_OK;
 }
@@ -37,7 +51,9 @@ HAL_StatusTypeDef HAL_TIM_IC_Start_IT(TIM_HandleTypeDef *timer, uint32_t channel
 {
     assert(timer->Instance == TIM4 && channel == TIM_CHANNEL_1);
     assert(s_ch2_started);
-    if (s_fail_start_it) return HAL_ERROR;
+    if (s_fail_start_it) {
+        return HAL_ERROR;
+    }
     s_ch1_started = true;
     return HAL_OK;
 }

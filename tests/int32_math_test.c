@@ -10,16 +10,10 @@ int main(void)
     static const struct {
         int32_t value;
         uint32_t magnitude;
-    } cases[] = {
-        {INT32_MIN, UINT32_C(2147483648)},
-        {INT32_MIN + INT32_C(1), UINT32_C(2147483647)},
-        {-INT32_C(1000), UINT32_C(1000)},
-        {-INT32_C(1), UINT32_C(1)},
-        {INT32_C(0), UINT32_C(0)},
-        {INT32_C(1), UINT32_C(1)},
-        {INT32_C(1000), UINT32_C(1000)},
-        {INT32_MAX, UINT32_C(2147483647)}
-    };
+    } cases[] = {{INT32_MIN, UINT32_C(2147483648)}, {INT32_MIN + INT32_C(1), UINT32_C(2147483647)},
+                 {-INT32_C(1000), UINT32_C(1000)},  {-INT32_C(1), UINT32_C(1)},
+                 {INT32_C(0), UINT32_C(0)},         {INT32_C(1), UINT32_C(1)},
+                 {INT32_C(1000), UINT32_C(1000)},   {INT32_MAX, UINT32_C(2147483647)}};
     for (size_t i = 0U; i < sizeof(cases) / sizeof(cases[0]); ++i) {
         assert(int32_magnitude(cases[i].value) == cases[i].magnitude);
     }

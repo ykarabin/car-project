@@ -100,8 +100,7 @@ crsf_result_t crsf_parser_push(crsf_parser_t *parser, uint8_t byte,
             break;
         }
 
-        if (crc8(&parser->buffer[2], length - 1U) !=
-            parser->buffer[frame_size - 1U]) {
+        if (crc8(&parser->buffer[2], length - 1U) != parser->buffer[frame_size - 1U]) {
             ++parser->crc_errors;
             /* Resynchronize after a corrupt frame. */
             discard_bytes(parser, 1U);
@@ -112,7 +111,8 @@ crsf_result_t crsf_parser_push(crsf_parser_t *parser, uint8_t byte,
         if (parser->buffer[2] == CRSF_TYPE_CHANNELS) {
             if (length < (CRSF_CHANNEL_PAYLOAD_SIZE + 2U)) {
                 ++parser->frame_errors;
-            } else if (decode_channels(&parser->buffer[3], parser->required_channel_mask, channels)) {
+            } else if (decode_channels(&parser->buffer[3], parser->required_channel_mask,
+                                       channels)) {
                 ++parser->rc_frames;
                 result = CRSF_RESULT_CHANNELS;
             } else {
@@ -141,11 +141,9 @@ int16_t crsf_normalize(uint16_t raw)
     } else if (value >= CRSF_CHANNEL_MAX) {
         normalized = 1000;
     } else if (value < CRSF_CHANNEL_MID) {
-        normalized = ((value - CRSF_CHANNEL_MID) * 1000) /
-                     (CRSF_CHANNEL_MID - CRSF_CHANNEL_MIN);
+        normalized = ((value - CRSF_CHANNEL_MID) * 1000) / (CRSF_CHANNEL_MID - CRSF_CHANNEL_MIN);
     } else {
-        normalized = ((value - CRSF_CHANNEL_MID) * 1000) /
-                     (CRSF_CHANNEL_MAX - CRSF_CHANNEL_MID);
+        normalized = ((value - CRSF_CHANNEL_MID) * 1000) / (CRSF_CHANNEL_MAX - CRSF_CHANNEL_MID);
     }
 
     return (int16_t)normalized;
