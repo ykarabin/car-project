@@ -16,7 +16,7 @@ jobs:
     env:
       CC: clang
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: ECU tests
         run: |
@@ -40,11 +40,11 @@ jobs:
     env:
       ARM_GCC: arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Cache Arm GNU Toolchain
         id: arm-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/arm-gcc
           key: ${{ env.ARM_GCC }}
@@ -72,7 +72,7 @@ jobs:
           export PATH="$HOME/arm-gcc/bin:$PATH"
           python3 tools/ci/check_ecu_image.py firmware/vehicle-ecu/build/${{ matrix.preset }}/vehicle-ecu.elf
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: vehicle-ecu-${{ matrix.preset }}
           path: |
@@ -85,7 +85,7 @@ jobs:
     runs-on: ubuntu-24.04
     container: espressif/idf:v6.0.1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build
         working-directory: firmware/remote-gateway
@@ -96,7 +96,7 @@ jobs:
           idf.py build
           idf.py size
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: remote-gateway
           path: |
