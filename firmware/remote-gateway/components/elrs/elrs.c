@@ -29,10 +29,7 @@ _Static_assert(ELRS_CHANNEL_COUNT == CRSF_CHANNEL_COUNT, "Channel count mismatch
 
 static QueueHandle_t s_uart_queue;
 static QueueHandle_t s_sample_queue;
-static StaticQueue_t s_sample_queue_control;
-static uint8_t s_sample_queue_storage[sizeof(elrs_sample_t)];
 static uint16_t s_required_channel_mask;
-static const char *const TAG = "elrs";
 
 static void invalidate_sample(elrs_sample_t *sample)
 {
@@ -46,6 +43,7 @@ static void invalidate_sample(elrs_sample_t *sample)
 /* Decode buffered CRSF frames and publish the latest RC sample. */
 static void receiver_task(void *argument)
 {
+    static const char *const TAG = "elrs";
     (void)argument;
     crsf_parser_t parser = {.required_channel_mask = s_required_channel_mask};
     elrs_sample_t sample = {0};
@@ -64,13 +62,13 @@ static void receiver_task(void *argument)
 
         if (xQueueReceive(s_uart_queue, &event, pdMS_TO_TICKS(ELRS_POLL_MS)) == pdTRUE) {
             /* Check pending UART errors before decoding buffered data. */
-            for (size_t count = 0U; count < ELRS_UART_QUEUE_SIZE; ++count) {
+            for (size_t count = 0U; count < (size_t)ELRS_UART_QUEUE_SIZE; ++count) {
                 if ((event.type == UART_FIFO_OVF) || (event.type == UART_BUFFER_FULL) ||
                     (event.type == UART_FRAME_ERR) || (event.type == UART_PARITY_ERR) ||
                     (event.type == UART_BREAK)) {
                     uart_error = true;
                 }
-                if (((count + 1U) >= ELRS_UART_QUEUE_SIZE) ||
+                if (((count + 1U) >= (size_t)ELRS_UART_QUEUE_SIZE) ||
                     (xQueueReceive(s_uart_queue, &event, 0) != pdTRUE)) {
                     break;
                 }
@@ -118,7 +116,7 @@ static void receiver_task(void *argument)
                 const int received = uart_read_bytes(ELRS_UART, buffer, (uint32_t)to_read, 0);
                 if (received <= 0) {
                     ++sample.uart_errors;
-                    last_uart_error = received < 0 ? ESP_FAIL : ESP_ERR_TIMEOUT;
+                    last_uart_error = (received < 0) ? ESP_FAIL : ESP_ERR_TIMEOUT;
                     recovery_pending = true;
                     break;
                 }
@@ -207,6 +205,8 @@ esp_err_t elrs_start(uint16_t required_channel_mask)
         return error;
     }
 
+    static StaticQueue_t s_sample_queue_control;
+    static uint8_t s_sample_queue_storage[sizeof(elrs_sample_t)];
     s_sample_queue = xQueueCreateStatic(1U, sizeof(elrs_sample_t), s_sample_queue_storage,
                                         &s_sample_queue_control);
     const elrs_sample_t initial_sample = {0};

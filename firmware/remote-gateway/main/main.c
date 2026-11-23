@@ -10,14 +10,14 @@
 #include "remote_uart.h"
 #include "sdkconfig.h"
 
-enum {
-    STEERING_CHANNEL = 0,
-    THROTTLE_CHANNEL = 1,
-    MODE_CHANNEL = 2,
-    LOG_PERIOD_MS = 200,
-    WARNING_PERIOD_MS = 1000
-};
-static const char *const TAG = "gateway";
+#define STEERING_CHANNEL 0U
+#define THROTTLE_CHANNEL 1U
+#define MODE_CHANNEL 2U
+#define LOG_PERIOD_MS 200U
+#define WARNING_PERIOD_MS 1000U
+
+/* Entry point called by ESP-IDF after start-up. */
+void app_main(void);
 
 static const char *source_name(remote_source_t source)
 {
@@ -31,6 +31,7 @@ static const char *source_name(remote_source_t source)
 /* Sample RC inputs and send normalized commands periodically. */
 void app_main(void)
 {
+    static const char *const TAG = "gateway";
     const uint16_t required_channels =
         (uint16_t)((1U << STEERING_CHANNEL) | (1U << THROTTLE_CHANNEL) | (1U << MODE_CHANNEL));
     ESP_ERROR_CHECK(elrs_start(required_channels));

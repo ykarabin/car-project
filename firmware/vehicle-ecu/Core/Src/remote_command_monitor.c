@@ -2,8 +2,8 @@
 
 #include <string.h>
 
-_Static_assert(REMOTE_COMMAND_FAULT_GRACE_MS > 0U &&
-                   REMOTE_COMMAND_FAULT_GRACE_MS < REMOTE_COMMAND_TIMEOUT_MS,
+_Static_assert((REMOTE_COMMAND_FAULT_GRACE_MS > 0U) &&
+                   (REMOTE_COMMAND_FAULT_GRACE_MS < REMOTE_COMMAND_TIMEOUT_MS),
                "Remote grace bound");
 
 void remote_command_monitor_init(remote_command_monitor_t *monitor)

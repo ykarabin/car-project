@@ -15,13 +15,13 @@ _Static_assert(DRIVE_CONTROL_PWM_RISE_STEP > 0, "Positive PWM rise rate");
 _Static_assert(DRIVE_CONTROL_PWM_FALL_STEP > 0, "Positive PWM fall rate");
 _Static_assert(DRIVE_CONTROL_PWM_BRAKE_STEP >= DRIVE_CONTROL_PWM_FALL_STEP, "Brake PWM rate");
 _Static_assert(DRIVE_CONTROL_FEEDBACK_GRACE_MS < DRIVE_CONTROL_MAX_GAP_MS, "Feedback grace bound");
-_Static_assert(DRIVE_CONTROL_FEED_FORWARD_PWM > 0 &&
-                   DRIVE_CONTROL_FEED_FORWARD_PWM <= DRIVE_CONTROL_PWM_MAX,
+_Static_assert((DRIVE_CONTROL_FEED_FORWARD_PWM > 0) &&
+                   (DRIVE_CONTROL_FEED_FORWARD_PWM <= DRIVE_CONTROL_PWM_MAX),
                "Feed-forward duty");
 _Static_assert(VEHICLE_STICK_DEADBAND >= 0, "Stick deadband");
 _Static_assert(DRIVE_CONTROL_FULL_STICK > VEHICLE_STICK_DEADBAND, "Full stick");
 _Static_assert(DRIVE_CONTROL_FULL_STICK <= 1000, "Stick bounds");
-_Static_assert(DRIVE_CONTROL_KP > 0 && DRIVE_CONTROL_KI > 0, "Positive PI gains");
+_Static_assert((DRIVE_CONTROL_KP > 0) && (DRIVE_CONTROL_KI > 0), "Positive PI gains");
 
 static int32_t clamp(int32_t value, int32_t minimum, int32_t maximum)
 {
@@ -67,6 +67,8 @@ static void cancel_settle(drive_controller_t *controller)
         controller->motion = DRIVE_MOTION_REVERSING;
     } else if (controller->motion == DRIVE_MOTION_NEUTRAL_SETTLE) {
         controller->motion = DRIVE_MOTION_IDLE;
+    } else {
+        /* Not settling: nothing to cancel. */
     }
 }
 
@@ -97,8 +99,8 @@ static int16_t ramp_to_zero(drive_controller_t *controller, drive_control_state_
     if (elapsed_ms >= DRIVE_CONTROL_PERIOD_MS) {
         const int32_t previous =
             (controller->pwm < 0) ? -(int32_t)controller->pwm : controller->pwm;
-        const int32_t fall = (int32_t)((fall_step * elapsed_ms) / DRIVE_CONTROL_PERIOD_MS);
-        const int32_t output = clamp(previous - fall, 0, DRIVE_CONTROL_PWM_MAX);
+        const uint32_t decrease = (fall_step * elapsed_ms) / DRIVE_CONTROL_PERIOD_MS;
+        const int32_t output = clamp(previous - (int32_t)decrease, 0, DRIVE_CONTROL_PWM_MAX);
         controller->pwm = (int16_t)((controller->pwm < 0) ? -output : output);
         controller->updated_at_ms = now_ms;
     }
@@ -173,7 +175,7 @@ static int32_t regulate(drive_controller_t *controller, int32_t target, int32_t 
         target * DRIVE_CONTROL_FEED_FORWARD_PWM / DRIVE_CONTROL_NOMINAL_MM_S;
     const int32_t proportional = error * DRIVE_CONTROL_KP / 1000;
     /* Preserve fractional PWM so small errors accumulate. */
-    const int64_t increment = (int64_t)error * DRIVE_CONTROL_KI * elapsed_ms / 1000;
+    const int64_t increment = ((int64_t)error * DRIVE_CONTROL_KI * (int64_t)elapsed_ms) / 1000;
     const int64_t candidate = (int64_t)controller->integral_milli_pwm + increment;
     const int32_t integral_limit = DRIVE_CONTROL_PWM_MAX * 1000;
     int32_t integral;
@@ -184,12 +186,12 @@ static int32_t regulate(drive_controller_t *controller, int32_t target, int32_t 
     } else {
         integral = (int32_t)candidate;
     }
-    const int32_t raw = feed_forward + proportional + controller->integral_milli_pwm / 1000;
+    const int32_t raw = feed_forward + proportional + (controller->integral_milli_pwm / 1000);
     /* Anti-windup: integrate only when the error does not push farther into a limit. */
     if (!(((error > 0) && (raw >= rise_limit)) || ((error < 0) && (raw <= fall_limit)))) {
         controller->integral_milli_pwm = integral;
     }
-    return clamp(feed_forward + proportional + controller->integral_milli_pwm / 1000, fall_limit,
+    return clamp(feed_forward + proportional + (controller->integral_milli_pwm / 1000), fall_limit,
                  rise_limit);
 }
 
@@ -259,12 +261,12 @@ static int16_t update_pwm(drive_controller_t *controller, int32_t direction, uin
     controller->direction = direction;
     controller->motion = DRIVE_MOTION_RUNNING;
     const int32_t previous = (controller->pwm < 0) ? -(int32_t)controller->pwm : controller->pwm;
-    const int32_t rise =
-        (int32_t)((DRIVE_CONTROL_PWM_RISE_STEP * elapsed) / DRIVE_CONTROL_PERIOD_MS);
-    const int32_t fall =
-        (int32_t)((DRIVE_CONTROL_PWM_FALL_STEP * elapsed) / DRIVE_CONTROL_PERIOD_MS);
-    const int32_t fall_limit = clamp(previous - fall, 0, DRIVE_CONTROL_PWM_MAX);
-    const int32_t rise_limit = clamp(previous + rise, 0, DRIVE_CONTROL_PWM_MAX);
+    const uint32_t increase =
+        ((uint32_t)DRIVE_CONTROL_PWM_RISE_STEP * elapsed) / DRIVE_CONTROL_PERIOD_MS;
+    const uint32_t decrease =
+        ((uint32_t)DRIVE_CONTROL_PWM_FALL_STEP * elapsed) / DRIVE_CONTROL_PERIOD_MS;
+    const int32_t fall_limit = clamp(previous - (int32_t)decrease, 0, DRIVE_CONTROL_PWM_MAX);
+    const int32_t rise_limit = clamp(previous + (int32_t)increase, 0, DRIVE_CONTROL_PWM_MAX);
     int32_t output;
     if (controller->full_power_requested) {
         controller->integral_milli_pwm = 0;
@@ -320,11 +322,11 @@ static int16_t update_motion(drive_controller_t *controller, const remote_comman
     }
     const int32_t direction = (controller->target_mm_s < 0) ? -1 : 1;
     const bool opposite_motion =
-        direction * controller->measured_mm_s < -DRIVE_CONTROL_REVERSE_STOP_MM_S;
+        (direction * controller->measured_mm_s) < -DRIVE_CONTROL_REVERSE_STOP_MM_S;
     /* Returning to the old command direction can cancel a reversal; actual opposite motion cannot.
      */
     if (motion_reversing(controller) && (direction == controller->direction) &&
-        (direction * previous_target < 0) && !opposite_motion) {
+        ((direction * previous_target) < 0) && !opposite_motion) {
         controller->motion = DRIVE_MOTION_RUNNING;
     }
     if (((controller->direction != 0) && (direction != controller->direction)) || opposite_motion) {

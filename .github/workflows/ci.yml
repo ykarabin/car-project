@@ -30,6 +30,57 @@ jobs:
           cmake --build build/gateway-tests --parallel
           ctest --test-dir build/gateway-tests --output-on-failure
 
+  lint:
+    name: Lint (clang-format, cppcheck MISRA)
+    runs-on: ubuntu-24.04
+    # ESP-IDF is needed for the Gateway compile_commands.json.
+    container: espressif/idf:v6.0.1
+    env:
+      CPPCHECK_VERSION: 2.22.0
+      CLANG_FORMAT_VERSION: 23.1.5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Cache cppcheck
+        id: cppcheck-cache
+        uses: actions/cache@v6
+        with:
+          path: /opt/cppcheck
+          key: cppcheck-${{ env.CPPCHECK_VERSION }}-idf-v6.0.1
+
+      - name: Build cppcheck
+        if: steps.cppcheck-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends g++
+          curl -fsSL "https://github.com/danmar/cppcheck/archive/refs/tags/${CPPCHECK_VERSION}.tar.gz" | tar -xz -C /tmp
+          cmake -S "/tmp/cppcheck-${CPPCHECK_VERSION}" -B /tmp/cppcheck-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/cppcheck \
+            -DFILESDIR=/opt/cppcheck/share/cppcheck
+          cmake --build /tmp/cppcheck-build
+          cmake --install /tmp/cppcheck-build
+
+      - name: Install clang-format
+        shell: bash
+        run: |
+          python3 -m venv /opt/lint
+          /opt/lint/bin/pip install --quiet "clang-format==${CLANG_FORMAT_VERSION}"
+
+      - name: Format
+        shell: bash
+        run: PATH="/opt/lint/bin:$PATH" python3 tools/lint/check.py format
+
+      - name: Gateway compile_commands.json
+        working-directory: firmware/remote-gateway
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py set-target esp32s3
+
+      - name: cppcheck + MISRA
+        shell: bash
+        run: PATH="/opt/cppcheck/bin:$PATH" python3 tools/lint/check.py cppcheck --require-gateway
+
   ecu:
     name: Vehicle ECU (${{ matrix.preset }})
     runs-on: ubuntu-24.04

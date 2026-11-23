@@ -16,6 +16,7 @@
 | [rtos-and-logging.md](rtos-and-logging.md) | Задачі, володіння даними, UART-транспорт, формат RTT |
 | [radio-setup.md](radio-setup.md) | Gateway: вибір джерела, ES900 / RadioMaster TX15, PWM-приймач |
 | [bench.md](bench.md) | Стендовий порядок дій, інструменти, результати вимірювань |
+| [misra.md](misra.md) | Статичний аналіз: cppcheck + MISRA, відхилення, хибні спрацювання, що лишилось |
 
 ## Вимоги до коду
 
@@ -60,8 +61,25 @@ cmake --build build/host-tests
 ctest --test-dir build/host-tests --output-on-failure
 ```
 
-Для Gateway — те саме з `firmware/remote-gateway/tests`. Тести моделюють
+Збірка `tests/` містить і тести Gateway: 39 тестів (34 ECU, 5 Gateway).
+`firmware/remote-gateway/tests` можна зібрати й окремо. Тести моделюють
 HAL, таймери та FreeRTOS; вони не замінюють перевірку на стенді.
+
+## Форматування й статичний аналіз
+
+Стиль задають `.clang-format` (C) і `.editorconfig` (решта файлів).
+Перевіряється лише власний код — список у `tools/lint/sources.py`.
+
+```sh
+brew install cppcheck clang-format      # CI: cppcheck 2.22, clang-format 23.1
+tools/lint/check.py format --fix        # відформатувати
+tools/lint/check.py format              # перевірити, як у CI
+tools/lint/check.py cppcheck            # cppcheck + MISRA, порівняння з базою
+```
+
+Для Gateway cppcheck бере `firmware/remote-gateway/build/compile_commands.json`
+(після `idf.py build`); без нього Gateway локально пропускається. Правила,
+відхилення й база MISRA — [misra.md](misra.md).
 
 ## CI
 
@@ -72,7 +90,10 @@ HAL, таймери та FreeRTOS; вони не замінюють переві
 - ECU Debug і Release з Arm GNU Toolchain 14.3.rel1 та перевірка образу
   `tools/ci/check_ecu_image.py`: нічого не записується в резерв калібрування,
   образ уміщується в 508 КБ;
-- Gateway в образі `espressif/idf:v6.0.1` і звіт `idf.py size`.
+- Gateway в образі `espressif/idf:v6.0.1` і звіт `idf.py size`;
+- дисплейний блок у тому ж образі;
+- Lint: `tools/lint/check.py format` і `cppcheck` (cppcheck 2.22 збирається
+  з джерел і кешується, clang-format 23.1.5 — з PyPI).
 
 Зібрані ELF / BIN доступні як artifacts запуску. Локально ECU збирається
 ST-версією компілятора (GNU Tools for STM32 14.3.1+st.2), у CI — офіційною

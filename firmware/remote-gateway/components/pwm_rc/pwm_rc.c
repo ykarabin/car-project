@@ -21,8 +21,7 @@
 #define PWM_THROTTLE_INVERTED false
 #endif
 
-static const int s_gpio[PWM_RC_CHANNEL_COUNT] = {CONFIG_PWM_RC_CH1_GPIO, CONFIG_PWM_RC_CH2_GPIO,
-                                                 CONFIG_PWM_RC_CH3_GPIO};
+_Static_assert(PWM_RC_CHANNEL_COUNT == 3U, "Initializers below list three channels");
 
 static const pwm_calibration_t s_calibration[PWM_RC_CHANNEL_COUNT] = {
     {CONFIG_PWM_RC_MIN_US, CONFIG_PWM_RC_CENTER_US, CONFIG_PWM_RC_MAX_US, CONFIG_PWM_RC_DEADBAND_US,
@@ -33,15 +32,19 @@ static const pwm_calibration_t s_calibration[PWM_RC_CHANNEL_COUNT] = {
 
 static mcpwm_cap_timer_handle_t s_timer;
 static mcpwm_cap_channel_handle_t s_channel[PWM_RC_CHANNEL_COUNT];
-static size_t s_index[PWM_RC_CHANNEL_COUNT] = {0U, 1U, 2U};
 static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
 static pwm_decoder_t s_decoder;
 static bool s_started;
 
+/* The signature is fixed by mcpwm_capture_event_cb_t, so `context` cannot be const. */
+/* cppcheck-suppress-begin constParameterCallback */
 static bool capture_edge(mcpwm_cap_channel_handle_t channel,
                          const mcpwm_capture_event_data_t *event, void *context)
+/* cppcheck-suppress-end constParameterCallback */
 {
     (void)channel;
+    /* The context is &s_index[i] registered in pwm_rc_start. */
+    /* cppcheck-suppress misra-c2012-11.5 */
     const size_t index = *(const size_t *)context;
     const int64_t now_us = esp_timer_get_time();
     portENTER_CRITICAL_ISR(&s_lock);
@@ -77,6 +80,10 @@ static void release_capture(const bool enabled[PWM_RC_CHANNEL_COUNT], bool timer
 
 esp_err_t pwm_rc_start(void)
 {
+    static const int s_gpio[PWM_RC_CHANNEL_COUNT] = {CONFIG_PWM_RC_CH1_GPIO, CONFIG_PWM_RC_CH2_GPIO,
+                                                     CONFIG_PWM_RC_CH3_GPIO};
+    /* Capture callback contexts; must outlive the channels. */
+    static size_t s_index[PWM_RC_CHANNEL_COUNT] = {0U, 1U, 2U};
     if (s_started || (s_timer != NULL)) {
         return ESP_ERR_INVALID_STATE;
     }
@@ -100,7 +107,7 @@ esp_err_t pwm_rc_start(void)
         return error;
     }
 
-    bool enabled[PWM_RC_CHANNEL_COUNT] = {false};
+    bool enabled[PWM_RC_CHANNEL_COUNT] = {false, false, false};
     bool timer_enabled = false;
     bool timer_started = false;
     uint32_t resolution_hz = 0U;

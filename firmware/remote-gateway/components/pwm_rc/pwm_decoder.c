@@ -32,7 +32,7 @@ void pwm_decoder_capture(pwm_decoder_t *decoder, size_t index, bool rising, uint
         channel->period_us = (capture_ticks - channel->rise_ticks) / decoder->ticks_per_us;
         channel->period_valid = channel->have_rise && !channel->rise_pending &&
                                 (now_us >= channel->rise_at_us) &&
-                                ((now_us - channel->rise_at_us) <= PWM_RC_MAX_PERIOD_US) &&
+                                ((now_us - channel->rise_at_us) <= (int64_t)PWM_RC_MAX_PERIOD_US) &&
                                 (channel->period_us >= PWM_RC_MIN_PERIOD_US) &&
                                 (channel->period_us <= PWM_RC_MAX_PERIOD_US);
         if (!channel->period_valid) {
@@ -59,7 +59,8 @@ void pwm_decoder_capture(pwm_decoder_t *decoder, size_t index, bool rising, uint
     channel->rise_pending = false;
     channel->pulse_us = (capture_ticks - channel->rise_ticks) / decoder->ticks_per_us;
 
-    if ((now_us < channel->rise_at_us) || ((now_us - channel->rise_at_us) > PWM_RC_MAX_PERIOD_US) ||
+    if ((now_us < channel->rise_at_us) ||
+        ((now_us - channel->rise_at_us) > (int64_t)PWM_RC_MAX_PERIOD_US) ||
         (channel->pulse_us < PWM_RC_MIN_PULSE_US) || (channel->pulse_us > PWM_RC_MAX_PULSE_US)) {
         invalidate_channel(channel);
         ++channel->errors;
@@ -86,19 +87,23 @@ void pwm_decoder_capture(pwm_decoder_t *decoder, size_t index, bool rising, uint
 static int16_t normalize(uint32_t pulse_us, const pwm_calibration_t *calibration)
 {
     const int32_t pulse = (int32_t)pulse_us;
-    const int32_t lower_center = (int32_t)calibration->center_us - calibration->deadband_us;
-    const int32_t upper_center = (int32_t)calibration->center_us + calibration->deadband_us;
+    const int32_t minimum = (int32_t)calibration->minimum_us;
+    const int32_t maximum = (int32_t)calibration->maximum_us;
+    const int32_t deadband = (int32_t)calibration->deadband_us;
+    const int32_t lower_center = (int32_t)calibration->center_us - deadband;
+    const int32_t upper_center = (int32_t)calibration->center_us + deadband;
     int32_t value = 0;
 
-    if (pulse <= calibration->minimum_us) {
+    if (pulse <= minimum) {
         value = -1000;
-    } else if (pulse >= calibration->maximum_us) {
+    } else if (pulse >= maximum) {
         value = 1000;
     } else if (pulse < lower_center) {
-        value = ((pulse - lower_center) * 1000) / (lower_center - calibration->minimum_us);
+        value = ((pulse - lower_center) * 1000) / (lower_center - minimum);
     } else if (pulse > upper_center) {
-        value = ((pulse - upper_center) * 1000) / (calibration->maximum_us - upper_center);
+        value = ((pulse - upper_center) * 1000) / (maximum - upper_center);
     } else {
+        /* Inside the deadband: neutral. */
     }
     if (calibration->inverted) {
         value = -value;

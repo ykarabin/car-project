@@ -16,6 +16,8 @@ int32_t steering_calibration_delta(uint16_t from, uint16_t to)
         delta -= 4096;
     } else if (delta < -2048) {
         delta += 4096;
+    } else {
+        /* Already the shortest way around. */
     }
     return delta;
 }
@@ -63,6 +65,8 @@ bool steering_calibration_position(const steering_calibration_t *calibration, ui
         scaled = 1000;
     } else if (scaled < -1000) {
         scaled = -1000;
+    } else {
+        /* Within the working range. */
     }
     *position = (int16_t)scaled;
     return true;
@@ -88,6 +92,8 @@ bool steering_calibration_target(const steering_calibration_t *calibration, int1
         target += 4096;
     } else if (target >= 4096) {
         target -= 4096;
+    } else {
+        /* No wrap past 0 / 4095. */
     }
     *raw = (uint16_t)target;
     return true;
@@ -102,7 +108,7 @@ static uint32_t record_crc(const uint32_t *words)
             crc ^= word & UINT32_C(0xFF);
             word >>= 8U;
             for (uint32_t bit = 0U; bit < 8U; ++bit) {
-                crc = ((crc & 1U) != 0U) ? ((crc >> 1U) ^ UINT32_C(0xEDB88320)) : (crc >> 1U);
+                crc = ((crc & 1U) != 0U) ? ((crc >> 1U) ^ 0xEDB88320U) : (crc >> 1U);
             }
         }
     }
@@ -131,7 +137,7 @@ bool steering_calibration_decode(const uint32_t words[STEERING_CAL_RECORD_WORDS]
 {
     if ((words == NULL) || (calibration == NULL) || (sequence == NULL) ||
         (words[6] != CAL_COMMIT) || (words[7] != ~CAL_COMMIT) || (words[0] != CAL_MAGIC) ||
-        (words[1] != CAL_VERSION) || ((words[4] & UINT32_C(0xFFFF0000)) != 0U) ||
+        (words[1] != CAL_VERSION) || ((words[4] & 0xFFFF0000U) != 0U) ||
         (words[5] != record_crc(words))) {
         return false;
     }
@@ -149,5 +155,5 @@ bool steering_calibration_decode(const uint32_t words[STEERING_CAL_RECORD_WORDS]
 bool steering_calibration_sequence_newer(uint32_t candidate, uint32_t previous)
 {
     const uint32_t difference = candidate - previous;
-    return (difference != 0U) && (difference < UINT32_C(0x80000000));
+    return (difference != 0U) && (difference < 0x80000000U);
 }

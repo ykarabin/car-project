@@ -81,18 +81,18 @@ int16_t steering_controller_update(steering_controller_t *controller, int16_t re
         }
         /* Reduce PWM during feedback loss. */
         if (elapsed >= STEERING_CONTROL_PERIOD_MS) {
-            const int32_t step =
-                (int32_t)((STEERING_CONTROL_PWM_STEP * elapsed) / STEERING_CONTROL_PERIOD_MS);
-            controller->pwm = (int16_t)approach(controller->pwm, 0, step);
+            const uint32_t step =
+                ((uint32_t)STEERING_CONTROL_PWM_STEP * elapsed) / STEERING_CONTROL_PERIOD_MS;
+            controller->pwm = (int16_t)approach(controller->pwm, 0, (int32_t)step);
             controller->updated_at_ms = now_ms;
         }
         return controller->pwm;
     }
     controller->feedback_at_ms = now_ms;
-    if ((request >= -VEHICLE_STICK_DEADBAND) && (request <= VEHICLE_STICK_DEADBAND)) {
-        request = 0;
-    }
-    if (!steering_calibration_target(&controller->calibration, request, &controller->target_raw)) {
+    const bool neutral =
+        (request >= -VEHICLE_STICK_DEADBAND) && (request <= VEHICLE_STICK_DEADBAND);
+    const int16_t target = neutral ? 0 : request;
+    if (!steering_calibration_target(&controller->calibration, target, &controller->target_raw)) {
         steering_controller_stop(controller);
         return 0;
     }

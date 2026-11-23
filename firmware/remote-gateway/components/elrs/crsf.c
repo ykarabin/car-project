@@ -85,7 +85,7 @@ crsf_result_t crsf_parser_push(crsf_parser_t *parser, uint8_t byte,
         }
 
         if (parser->used < 2U) {
-            break;
+            return CRSF_RESULT_NONE; /* wait for the length byte */
         }
 
         const size_t length = parser->buffer[1];
@@ -97,7 +97,7 @@ crsf_result_t crsf_parser_push(crsf_parser_t *parser, uint8_t byte,
 
         const size_t frame_size = length + 2U;
         if (parser->used < frame_size) {
-            break;
+            return CRSF_RESULT_NONE; /* wait for the rest of the frame */
         }
 
         if (crc8(&parser->buffer[2], length - 1U) != parser->buffer[frame_size - 1U]) {

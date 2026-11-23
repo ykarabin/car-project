@@ -1,0 +1,19 @@
+{
+  "misra-c2012-10.1": {
+    "firmware/remote-gateway/components/elrs/elrs.c": 1,
+    "firmware/remote-gateway/components/pwm_rc/pwm_rc.c": 1,
+    "firmware/remote-gateway/main/main.c": 5
+  },
+  "misra-c2012-10.4": {
+    "firmware/remote-gateway/components/elrs/elrs.c": 2,
+    "firmware/remote-gateway/components/pwm_rc/pwm_rc.c": 1,
+    "firmware/remote-gateway/components/remote_uart/remote_uart.c": 1,
+    "firmware/remote-gateway/main/main.c": 5
+  },
+  "misra-c2012-10.8": {
+    "firmware/remote-gateway/main/main.c": 1
+  },
+  "misra-c2012-7.2": {
+    "firmware/remote-gateway/components/pwm_rc/pwm_rc.c": 1
+  }
+}

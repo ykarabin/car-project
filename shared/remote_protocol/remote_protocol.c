@@ -45,8 +45,8 @@ int remote_command_format(char *line, size_t size, const remote_command_t *comma
     }
     const uint16_t crc = remote_crc16(line, (size_t)length);
     const int tail =
-        snprintf(line + length, size - (size_t)length, "*%04" PRIX32 "\n", (uint32_t)crc);
-    if ((tail != 6) || ((size_t)tail >= size - (size_t)length)) {
+        snprintf(&line[length], size - (size_t)length, "*%04" PRIX32 "\n", (uint32_t)crc);
+    if ((tail != 6) || ((size_t)tail >= (size - (size_t)length))) {
         return -1;
     }
     return length + tail;
@@ -68,7 +68,7 @@ static bool read_number(const char **cursor, char separator, int32_t minimum, in
     }
     int32_t value = 0;
     while ((*p >= '0') && (*p <= '9')) {
-        value = value * 10 + (*p - '0');
+        value = (value * 10) + (*p - '0');
         /* Reject oversized fields before arithmetic can overflow. */
         if (value > 1000) {
             return false;
@@ -80,7 +80,7 @@ static bool read_number(const char **cursor, char separator, int32_t minimum, in
         return false;
     }
     *output = value;
-    *cursor = p + 1;
+    *cursor = &p[1];
     return true;
 }
 
@@ -100,8 +100,12 @@ static int32_t hex_digit(char byte)
 
 static bool parse_line(const char *line, remote_command_t *command)
 {
-    const char *star = strchr(line, '*');
-    if ((star == NULL) || (strlen(star + 1) != 4U) || (strncmp(line, "RC,", 3U) != 0)) {
+    size_t payload_length = 0U;
+    while ((line[payload_length] != '\0') && (line[payload_length] != '*')) {
+        ++payload_length;
+    }
+    const char *star = &line[payload_length];
+    if ((*star != '*') || (strlen(&star[1]) != 4U) || (strncmp(line, "RC,", 3U) != 0)) {
         return false;
     }
     uint16_t expected_crc = 0U;
@@ -112,10 +116,10 @@ static bool parse_line(const char *line, remote_command_t *command)
         }
         expected_crc = (uint16_t)(((uint32_t)expected_crc << 4U) | (uint32_t)digit);
     }
-    if (remote_crc16(line, (size_t)(star - line)) != expected_crc) {
+    if (remote_crc16(line, payload_length) != expected_crc) {
         return false;
     }
-    const char *p = line + 3;
+    const char *p = &line[3];
     int32_t steering;
     int32_t throttle;
     int32_t mode;
@@ -147,7 +151,7 @@ void remote_parser_reset(remote_parser_t *parser)
 remote_parse_result_t remote_parser_push(remote_parser_t *parser, uint8_t byte,
                                          remote_command_t *command)
 {
-    if (byte == '\n') {
+    if (byte == (uint8_t)'\n') {
         if (parser->discarding || (parser->used == 0U)) {
             remote_parser_reset(parser);
             return REMOTE_PARSE_NONE;
@@ -164,11 +168,12 @@ remote_parse_result_t remote_parser_push(remote_parser_t *parser, uint8_t byte,
     if (parser->discarding) {
         return REMOTE_PARSE_NONE;
     }
-    if (((byte < 32U) && (byte != '\r')) || (byte > 126U) ||
-        (parser->used >= sizeof(parser->line) - 1U)) {
+    if (((byte < 32U) && (byte != (uint8_t)'\r')) || (byte > 126U) ||
+        (parser->used >= (sizeof(parser->line) - 1U))) {
         parser->discarding = true;
         return REMOTE_PARSE_INVALID;
     }
-    parser->line[parser->used++] = (char)byte;
+    parser->line[parser->used] = (char)byte;
+    ++parser->used;
     return REMOTE_PARSE_NONE;
 }

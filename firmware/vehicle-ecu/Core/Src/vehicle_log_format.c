@@ -17,9 +17,9 @@ static void format_speed(char *text, size_t size, int32_t mm_s, bool valid)
         return;
     }
     const int64_t scaled = (int64_t)mm_s * 36;
-    const int32_t tenths = (int32_t)((scaled + (scaled < 0 ? -500 : 500)) / 1000);
-    const uint32_t magnitude = (uint32_t)(tenths < 0 ? -tenths : tenths);
-    (void)snprintf(text, size, "%s%" PRIu32 ".%" PRIu32, tenths < 0 ? "-" : "", magnitude / 10U,
+    const int32_t tenths = (int32_t)((scaled + ((scaled < 0) ? -500 : 500)) / 1000);
+    const uint32_t magnitude = (uint32_t)((tenths < 0) ? -tenths : tenths);
+    (void)snprintf(text, size, "%s%" PRIu32 ".%" PRIu32, (tenths < 0) ? "-" : "", magnitude / 10U,
                    magnitude % 10U);
 }
 
@@ -40,9 +40,9 @@ static void format_status(uint32_t at_ms, const vehicle_log_status_t *status)
         (void)snprintf(position_text, sizeof(position_text), "--");
     }
     if (status->cal_stage != BOARD_CAL_OFF) {
-        const char *step = status->cal_stage == BOARD_CAL_CENTER ?
+        const char *step = (status->cal_stage == BOARD_CAL_CENTER) ?
                                "CENTER" :
-                               (status->cal_stage == BOARD_CAL_LEFT ? "LEFT" : "RIGHT");
+                               ((status->cal_stage == BOARD_CAL_LEFT) ? "LEFT" : "RIGHT");
         debug_console_printf_at(at_ms, "STAT RC=%s M=%u | CAL %s pos=%s rear=OFF",
                                 status->remote_state, (unsigned)status->drive_mode, step,
                                 position_text);
@@ -128,9 +128,9 @@ void vehicle_log_format(uint32_t captured_at_ms, const vehicle_log_message_t *me
         debug_console_printf_at(captured_at_ms,
                                 "ERROR MOTOR_FLT LATCHED | mask=0x%02" PRIX32
                                 " left=%u right=%u steering=%u | all SLP LOW; reset required",
-                                faults, (faults & MOTOR_FAULT_LEFT) != 0U ? 1U : 0U,
-                                (faults & MOTOR_FAULT_RIGHT) != 0U ? 1U : 0U,
-                                (faults & MOTOR_FAULT_STEERING) != 0U ? 1U : 0U);
+                                faults, ((faults & MOTOR_FAULT_LEFT) != 0U) ? 1U : 0U,
+                                ((faults & MOTOR_FAULT_RIGHT) != 0U) ? 1U : 0U,
+                                ((faults & MOTOR_FAULT_STEERING) != 0U) ? 1U : 0U);
         break;
     }
     case VEHICLE_LOG_STATUS: format_status(captured_at_ms, &message->data.status); break;

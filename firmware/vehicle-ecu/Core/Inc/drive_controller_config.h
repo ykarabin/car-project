@@ -12,8 +12,9 @@
 /* Scale for partial throttle and feed-forward; full mode-3 throttle requests 100% PWM. */
 #define DRIVE_CONTROL_NOMINAL_MOTOR_RPM 2800U
 #define DRIVE_CONTROL_NOMINAL_MM_S \
-    ((int32_t)(((uint64_t)DRIVE_CONTROL_NOMINAL_MOTOR_RPM * REAR_ENCODER_WHEEL_CIRCUMFERENCE_UM) / \
-               ((uint64_t)REAR_ENCODER_GEAR_RATIO * 60000U)))
+    ((int32_t)(((int64_t)DRIVE_CONTROL_NOMINAL_MOTOR_RPM * \
+                (int64_t)REAR_ENCODER_WHEEL_CIRCUMFERENCE_UM) / \
+               ((int64_t)REAR_ENCODER_GEAR_RATIO * 60000)))
 
 #define DRIVE_CONTROL_PERIOD_MS 10U
 #define DRIVE_CONTROL_MAX_GAP_MS 50U
