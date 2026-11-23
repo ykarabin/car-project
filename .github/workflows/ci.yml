@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host-tests:
+    name: Host tests
+    runs-on: ubuntu-24.04
+    env:
+      CC: clang
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ECU tests
+        run: |
+          cmake -S tests -B build/host-tests -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/host-tests --parallel
+          ctest --test-dir build/host-tests --output-on-failure
+
+      - name: Gateway tests
+        run: |
+          cmake -S firmware/remote-gateway/tests -B build/gateway-tests -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/gateway-tests --parallel
+          ctest --test-dir build/gateway-tests --output-on-failure
+
+  ecu:
+    name: Vehicle ECU (${{ matrix.preset }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [Debug, Release]
+    env:
+      ARM_GCC: arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Arm GNU Toolchain
+        id: arm-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/arm-gcc
+          key: ${{ env.ARM_GCC }}
+
+      - name: Install Arm GNU Toolchain
+        if: steps.arm-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/arm-gcc
+          curl -fsSL "https://developer.arm.com/-/media/Files/downloads/gnu/14.3.rel1/binrel/${ARM_GCC}.tar.xz" \
+            | tar -xJ -C ~/arm-gcc --strip-components=1
+
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Build
+        working-directory: firmware/vehicle-ecu
+        run: |
+          export PATH="$HOME/arm-gcc/bin:$PATH"
+          arm-none-eabi-gcc --version | head -1
+          cmake --preset ${{ matrix.preset }}
+          cmake --build --preset ${{ matrix.preset }}
+
+      - name: Check image (calibration region, Flash size)
+        run: |
+          export PATH="$HOME/arm-gcc/bin:$PATH"
+          python3 tools/ci/check_ecu_image.py firmware/vehicle-ecu/build/${{ matrix.preset }}/vehicle-ecu.elf
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vehicle-ecu-${{ matrix.preset }}
+          path: |
+            firmware/vehicle-ecu/build/${{ matrix.preset }}/vehicle-ecu.elf
+            firmware/vehicle-ecu/build/${{ matrix.preset }}/vehicle-ecu.map
+          if-no-files-found: warn
+
+  gateway:
+    name: Remote Gateway
+    runs-on: ubuntu-24.04
+    container: espressif/idf:v6.0.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        working-directory: firmware/remote-gateway
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py set-target esp32s3
+          idf.py build
+          idf.py size
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: remote-gateway
+          path: |
+            firmware/remote-gateway/build/remote-gateway.elf
+            firmware/remote-gateway/build/remote-gateway.bin
+            firmware/remote-gateway/build/bootloader/bootloader.bin
+            firmware/remote-gateway/build/partition_table/partition-table.bin
+            firmware/remote-gateway/build/flash_args

@@ -5,6 +5,7 @@
 [README](../../README.md), архітектура — [architecture.md](../architecture.md),
 підключення — [hardware.md](../hardware.md), збірка й калібрування —
 [usage.md](../usage.md).
+Плани й прогрес — [ROADMAP.md](../../ROADMAP.md).
 
 | Документ | Зміст |
 | --- | --- |
@@ -61,6 +62,21 @@ ctest --test-dir build/host-tests --output-on-failure
 
 Для Gateway — те саме з `firmware/remote-gateway/tests`. Тести моделюють
 HAL, таймери та FreeRTOS; вони не замінюють перевірку на стенді.
+
+## CI
+
+`.github/workflows/ci.yml` запускається на push у `main` / `develop`, на PR
+і вручну:
+
+- хостові тести ECU й Gateway (clang);
+- ECU Debug і Release з Arm GNU Toolchain 14.3.rel1 та перевірка образу
+  `tools/ci/check_ecu_image.py`: нічого не записується в резерв калібрування,
+  образ уміщується в 508 КБ;
+- Gateway в образі `espressif/idf:v6.0.1` і звіт `idf.py size`.
+
+Зібрані ELF / BIN доступні як artifacts запуску. Локально ECU збирається
+ST-версією компілятора (GNU Tools for STM32 14.3.1+st.2), у CI — офіційною
+Arm 14.3.rel1; розміри образів можуть трохи відрізнятися.
 
 ## Що ще не виміряно
 
