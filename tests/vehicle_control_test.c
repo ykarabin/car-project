@@ -709,6 +709,9 @@ static void test_center_return_timeout_and_clock_wrap(void)
         tick(1U);
         for (uint32_t elapsed = 10U; elapsed < STEERING_CONTROL_RELEASE_TIMEOUT_MS;
              elapsed += 10U) {
+            if ((elapsed % 100U) == 0U) {
+                --s_encoder.raw; /* Slow progress: not a stall, but no center within 2 s. */
+            }
             tick(10U);
             assert(s_steering_enabled && s_last_output.steering_pwm <= 0);
         }
@@ -734,6 +737,9 @@ static void test_remote_input_cancels_center_return_and_next_release_gets_new_de
     s_remote.steering = 500;
     for (uint32_t elapsed = 0U; elapsed <= STEERING_CONTROL_RELEASE_TIMEOUT_MS + 100U;
          elapsed += 10U) {
+        if ((elapsed % 100U) == 0U) {
+            --s_encoder.raw; /* Slow progress keeps the stall check quiet. */
+        }
         tick(10U);
         assert(s_steering_enabled);
     }
@@ -741,6 +747,58 @@ static void test_remote_input_cancels_center_return_and_next_release_gets_new_de
     finish_center_return();
     assert(strstr(s_log, "STEER_RELEASE CENTERED") != NULL);
     assert(strstr(s_log, "STEER_RELEASE TIMEOUT") == NULL);
+}
+
+static void test_steering_stall_releases_until_stick_neutral(void)
+{
+    start_remote_right_hold();
+    s_remote.throttle = 500;
+    s_remote.steering = -1000; /* Drive left while the mechanism does not move. */
+    uint32_t driven = 0U;
+    while (s_steering_enabled) {
+        tick(10U);
+        driven += 10U;
+        assert(driven <= STEERING_CONTROL_STALL_TIMEOUT_MS + 50U);
+    }
+    assert(driven >= STEERING_CONTROL_STALL_TIMEOUT_MS);
+    assert(s_last_output.steering_pwm == 0 && s_last_output.rear_pwm > 0);
+    assert(strstr(s_log, "STEER_RELEASE STALL") != NULL);
+
+    /* Holding the stick keeps the steering released, even if the encoder moves. */
+    for (uint32_t i = 0U; i < 100U; ++i) {
+        s_encoder.raw = (uint16_t)(1582U - i);
+        tick(10U);
+        assert(!s_steering_enabled && s_last_output.steering_pwm == 0);
+    }
+    s_remote.steering = 0;
+    tick(10U);
+    assert(!s_steering_enabled);
+    s_remote.steering = -1000;
+    tick(10U);
+    tick(10U);
+    tick(10U);
+    assert(s_steering_enabled && s_last_output.steering_pwm < 0);
+}
+
+static void test_blocked_center_return_releases_as_stall(void)
+{
+    start_remote_right_hold();
+    s_remote.steering = 0;
+    tick(1U);
+    uint32_t elapsed = 0U;
+    while (s_steering_enabled) {
+        tick(10U);
+        elapsed += 10U;
+        assert(elapsed < STEERING_CONTROL_RELEASE_TIMEOUT_MS);
+    }
+    assert(strstr(s_log, "STEER_RELEASE STALL") != NULL);
+    assert(strstr(s_log, "STEER_RELEASE TIMEOUT") == NULL);
+    /* Stick already neutral: the next deflection re-engages at once. */
+    s_remote.steering = -1000;
+    tick(10U);
+    tick(10U);
+    tick(10U);
+    assert(s_steering_enabled);
 }
 
 static void test_fault_and_service_cancel_center_return_without_restart(void)
@@ -1042,6 +1100,8 @@ int main(void)
     test_center_return_settles_then_stays_manual_with_remote_throttle();
     test_center_return_timeout_and_clock_wrap();
     test_remote_input_cancels_center_return_and_next_release_gets_new_deadline();
+    test_steering_stall_releases_until_stick_neutral();
+    test_blocked_center_return_releases_as_stall();
     test_fault_and_service_cancel_center_return_without_restart();
     test_button_three_points_save_reload_and_cancel();
     test_button_rejects_unready_capture_and_failed_save();

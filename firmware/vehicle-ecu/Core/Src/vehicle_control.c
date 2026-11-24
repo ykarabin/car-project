@@ -34,6 +34,8 @@ static steering_mode_t s_steering_mode;
 static uint32_t s_centering_since;
 static uint32_t s_centered_since;
 static bool s_center_stable;
+/* Set after a steering stall; cleared when the steering stick returns to neutral. */
+static bool s_steering_stalled;
 
 static bool neutral(const remote_command_t *command)
 {
@@ -59,6 +61,7 @@ void vehicle_control_init(void)
     s_centering_since = 0U;
     s_centered_since = 0U;
     s_center_stable = false;
+    s_steering_stalled = false;
     if (control_watchdog_was_reset()) {
         vehicle_log_text("WATCHDOG RESET | release both sticks to resume; outputs asleep");
     } else {
@@ -71,6 +74,9 @@ static const char *steering_state_name(void)
 {
     if (s_wait_neutral) {
         return "WAIT_NEUTRAL";
+    }
+    if (s_steering_stalled) {
+        return "STALLED";
     }
     switch (s_steering_mode) {
     case STEERING_MODE_MANUAL: return "MANUAL";
@@ -123,10 +129,23 @@ static int16_t normal_steering(const remote_command_t *control,
     const bool valid = s_calibration.has_saved && encoder_ready(encoder);
     const bool stick_neutral = (control->steering >= -VEHICLE_STICK_DEADBAND) &&
                                (control->steering <= VEHICLE_STICK_DEADBAND);
+    if (s_steering_stalled) {
+        /* Stay released until the driver lets go of the stick. */
+        if (stick_neutral) {
+            s_steering_stalled = false;
+        }
+        steering_controller_stop(&s_controller);
+        s_steering_mode = STEERING_MODE_MANUAL;
+        return 0;
+    }
     if (!stick_neutral) {
         s_center_stable = false;
         const int16_t pwm = steering_controller_update(&s_controller, control->steering,
                                                        valid ? encoder->raw : 0U, valid, now);
+        if (s_controller.stalled) {
+            s_steering_stalled = true;
+            return release_steering("STALL");
+        }
         if (!s_controller.initialized) {
             /* Release remote ownership after a prolonged feedback fault. */
             if ((s_steering_mode == STEERING_MODE_REMOTE) ||
@@ -149,6 +168,10 @@ static int16_t normal_steering(const remote_command_t *control,
         }
         const int16_t pwm =
             steering_controller_update(&s_controller, 0, valid ? encoder->raw : 0U, valid, now);
+        if (s_controller.stalled) {
+            /* Centering is blocked; the stick is already neutral, so no latch is needed. */
+            return release_steering("STALL");
+        }
         if (!valid && !s_controller.initialized) {
             return release_steering("FEEDBACK");
         }

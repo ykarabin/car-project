@@ -14,6 +14,9 @@ _Static_assert(STEERING_CONTROL_PWM_STEP > 0, "Positive output rate");
 _Static_assert(STEERING_CONTROL_MAX_GAP_MS > STEERING_CONTROL_PERIOD_MS, "Update time bounds");
 _Static_assert(STEERING_CONTROL_FEEDBACK_GRACE_MS < STEERING_CONTROL_MAX_GAP_MS,
                "Feedback grace bound");
+_Static_assert(STEERING_CONTROL_STALL_TIMEOUT_MS > STEERING_CONTROL_MAX_GAP_MS, "Stall window");
+_Static_assert(STEERING_CONTROL_STALL_PROGRESS_COUNTS > STEERING_CONTROL_STOP_COUNTS,
+               "Stall progress above noise");
 
 static int32_t coordinate(const steering_controller_t *controller, uint16_t raw)
 {
@@ -29,6 +32,24 @@ static int32_t approach(int32_t value, int32_t target, int32_t step)
         return value - step;
     }
     return target;
+}
+
+/* Measure progress from the start of each drive; no progress for the window means a stall. */
+static void update_stall(steering_controller_t *controller, int32_t actual, bool was_driving,
+                         uint32_t now_ms)
+{
+    const int32_t progress = actual - controller->stall_reference_counts;
+    if ((controller->pwm == 0) || !was_driving ||
+        (int32_magnitude(progress) >= (uint32_t)STEERING_CONTROL_STALL_PROGRESS_COUNTS)) {
+        controller->stall_reference_counts = actual;
+        controller->stall_since_ms = now_ms;
+    } else if ((now_ms - controller->stall_since_ms) >= STEERING_CONTROL_STALL_TIMEOUT_MS) {
+        controller->stalled = true;
+        controller->moving = false;
+        controller->pwm = 0;
+    } else {
+        /* Driving, still inside the window. */
+    }
 }
 
 bool steering_controller_init(steering_controller_t *controller,
@@ -59,6 +80,7 @@ void steering_controller_stop(steering_controller_t *controller)
     if (controller != NULL) {
         controller->initialized = false;
         controller->moving = false;
+        controller->stalled = false;
         controller->pwm = 0;
         controller->error_counts = 0;
     }
@@ -69,6 +91,9 @@ int16_t steering_controller_update(steering_controller_t *controller, int16_t re
 {
     if ((controller == NULL) || !controller->calibrated || (request < -1000) || (request > 1000)) {
         steering_controller_stop(controller);
+        return 0;
+    }
+    if (controller->stalled) {
         return 0;
     }
     const uint32_t elapsed = now_ms - controller->updated_at_ms;
@@ -118,6 +143,7 @@ int16_t steering_controller_update(steering_controller_t *controller, int16_t re
         return controller->pwm;
     }
     controller->updated_at_ms = now_ms;
+    const bool was_driving = (controller->pwm != 0);
     const int32_t error = desired - actual;
     controller->error_counts = error;
     const int32_t absolute_error = (int32_t)int32_magnitude(error);
@@ -150,5 +176,6 @@ int16_t steering_controller_update(steering_controller_t *controller, int16_t re
     } else {
         controller->pwm = (int16_t)approach(controller->pwm, drive, STEERING_CONTROL_PWM_STEP);
     }
+    update_stall(controller, actual, was_driving, now_ms);
     return controller->pwm;
 }

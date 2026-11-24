@@ -208,6 +208,59 @@ static void test_brief_feedback_loss_only_reduces_output_then_recovers(void)
     assert(!controller.initialized);
 }
 
+static void test_stall_latches_until_stop(void)
+{
+    steering_controller_t controller;
+    assert(steering_controller_init(&controller, &s_real));
+    assert(steering_controller_update(&controller, 1000, 56U, true, 0U) == 0);
+    /* Drive starts at 10 ms; the mechanism never moves. */
+    for (uint32_t now = 10U; now < 10U + STEERING_CONTROL_STALL_TIMEOUT_MS; now += 10U) {
+        assert(steering_controller_update(&controller, 1000, 56U, true, now) > 0);
+        assert(!controller.stalled);
+    }
+    assert(steering_controller_update(&controller, 1000, 56U, true,
+                                      10U + STEERING_CONTROL_STALL_TIMEOUT_MS) == 0);
+    assert(controller.stalled && !controller.moving);
+    /* Latched: no output even when the target or position changes. */
+    assert(steering_controller_update(&controller, -1000, 300U, true, 2000U) == 0);
+    assert(steering_controller_update(&controller, -1000, 300U, true, 2010U) == 0);
+    steering_controller_stop(&controller);
+    assert(!controller.stalled);
+    assert(steering_controller_update(&controller, 1000, 56U, true, 3000U) == 0);
+    assert(steering_controller_update(&controller, 1000, 56U, true, 3010U) > 0);
+}
+
+static void test_slow_progress_and_pauses_do_not_stall(void)
+{
+    steering_controller_t controller;
+    assert(steering_controller_init(&controller, &s_real));
+    int32_t position = 0;
+    (void)steering_controller_update(&controller, 1000, raw_for(&controller, position), true, 0U);
+    /* One count per 100 ms is 10 counts per window: slow, but moving. */
+    for (uint32_t now = 10U; now <= 3000U; now += 10U) {
+        if ((now % 100U) == 0U) {
+            ++position;
+        }
+        assert(steering_controller_update(&controller, 1000, raw_for(&controller, position), true,
+                                          now) > 0);
+    }
+    assert(!controller.stalled);
+
+    /* Each new drive gets a fresh window: holding in the dead zone resets the timer. */
+    steering_controller_t hold;
+    assert(steering_controller_init(&hold, &s_real));
+    (void)steering_controller_update(&hold, 0, 66U, true, 0U);
+    for (uint32_t now = 10U; now <= 900U; now += 10U) {
+        (void)steering_controller_update(&hold, 0, 66U, true, now); /* 10 counts off center */
+    }
+    assert(hold.pwm != 0 && !hold.stalled);
+    assert(steering_controller_update(&hold, 0, 56U, true, 910U) == 0); /* reached center */
+    for (uint32_t now = 920U; now <= 1700U; now += 10U) {
+        (void)steering_controller_update(&hold, 0, 66U, true, now);
+    }
+    assert(!hold.stalled);
+}
+
 int main(void)
 {
     test_neutral_boundary();
@@ -218,6 +271,8 @@ int main(void)
     test_fast_step_response();
     test_limit_brakes_before_inward_reversal();
     test_brief_feedback_loss_only_reduces_output_then_recovers();
+    test_stall_latches_until_stop();
+    test_slow_progress_and_pauses_do_not_stall();
     simulate(&s_real, 492, 0);
     simulate(&s_real, -498, 0);
     simulate(&s_real, -498, 1000);

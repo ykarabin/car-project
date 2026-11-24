@@ -16,5 +16,9 @@
 /* Return to center on release, then free steering after settling or timeout. */
 #define STEERING_CONTROL_RELEASE_SETTLE_MS 100U
 #define STEERING_CONTROL_RELEASE_TIMEOUT_MS 2000U
+/* Stall: driving without this much progress for this long releases the steering.
+ * Starting values, not tuned on the car yet. */
+#define STEERING_CONTROL_STALL_TIMEOUT_MS 1000U
+#define STEERING_CONTROL_STALL_PROGRESS_COUNTS 8
 
 #endif
