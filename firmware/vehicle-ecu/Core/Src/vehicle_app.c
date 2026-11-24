@@ -12,9 +12,12 @@
 #include "motor_safety.h"
 #include "control_watchdog.h"
 #include "fault_shutdown.h"
+#include "cpu_stats.h"
 
 #define STATUS_PERIOD_MS UINT32_C(500)
 #define WARNING_PERIOD_MS UINT32_C(1000)
+#define PERF_PERIOD_MS UINT32_C(5000)
+#define LOOP_PERIOD_US UINT32_C(1000)
 
 _Static_assert(pdMS_TO_TICKS(1U) > 0U, "Application period must span a tick");
 
@@ -38,8 +41,16 @@ void vehicle_app_run(UART_HandleTypeDef *uart)
     remote_command_state_t previous_state = REMOTE_COMMAND_WAITING;
     uint32_t logged_motor_faults = 0U;
 
+    cpu_cycles_start();
+    const uint32_t cycles_per_us = SystemCoreClock / UINT32_C(1000000);
+    cpu_stats_t perf;
+    cpu_stats_init(&perf, cycles_per_us, cycles_per_us * LOOP_PERIOD_US, cpu_cycles_now(),
+                   cpu_idle_cycles());
+    uint32_t last_perf = last_log;
+
     TickType_t last_wake = xTaskGetTickCount();
     for (;;) {
+        cpu_stats_loop_begin(&perf, cpu_cycles_now());
         remote_uart_service();
         remote_uart_event_t received;
         /* Drain the queue plus one possible overflow event. */
@@ -107,7 +118,14 @@ void vehicle_app_run(UART_HandleTypeDef *uart)
             }
             last_warning = now;
         }
+        if ((now - last_perf) >= PERF_PERIOD_MS) {
+            (void)vehicle_log_publish(&(const vehicle_log_message_t){
+                .kind = VEHICLE_LOG_PERF,
+                .data.perf = cpu_stats_take(&perf, cpu_cycles_now(), cpu_idle_cycles())});
+            last_perf = now;
+        }
         control_watchdog_feed();
+        cpu_stats_loop_end(&perf, cpu_cycles_now());
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(1U));
     }
 }

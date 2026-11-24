@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "board_controls.h"
+#include "cpu_stats.h"
 #include "steering_calibration.h"
 #include "motor_safety.h"
 
@@ -57,7 +58,8 @@ typedef enum {
     VEHICLE_LOG_MOTOR_FAULT_FIRST,
     VEHICLE_LOG_STATUS,
     VEHICLE_LOG_FEEDBACK,
-    VEHICLE_LOG_UART
+    VEHICLE_LOG_UART,
+    VEHICLE_LOG_PERF
 } vehicle_log_kind_t;
 
 typedef struct {
@@ -81,6 +83,7 @@ typedef struct {
         } feedback;
         vehicle_log_uart_t uart;
         vehicle_log_status_t status;
+        cpu_stats_snapshot_t perf;
     } data;
 } vehicle_log_message_t;
 

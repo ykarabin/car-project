@@ -310,6 +310,22 @@ void vehicle_control_log_status(const char *remote, uint8_t mode,
                                                        .drive_state = "DISABLED",
                                                        .steering_state = "OFF"}});
 }
+uint32_t SystemCoreClock = 170000000U;
+static uint32_t s_cycles;
+static unsigned s_cycle_starts;
+void cpu_cycles_start(void)
+{
+    ++s_cycle_starts;
+}
+uint32_t cpu_cycles_now(void)
+{
+    s_cycles += 1700U; /* 10 us per read */
+    return s_cycles;
+}
+uint32_t cpu_idle_cycles(void)
+{
+    return 0U;
+}
 uint32_t motor_safety_poll(void)
 {
     return s_fault;

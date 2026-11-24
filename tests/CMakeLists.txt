@@ -39,6 +39,7 @@ add_test(NAME remote_command_flow COMMAND remote_command_test)
 add_executable(remote_uart_test remote_uart_test.c
                ../firmware/vehicle-ecu/Core/Src/remote_uart.c
                ../firmware/vehicle-ecu/Core/Src/vehicle_app.c
+               ../firmware/vehicle-ecu/Core/Src/cpu_stats.c
                ../firmware/vehicle-ecu/Core/Src/vehicle_log_format.c
                ../firmware/vehicle-ecu/Core/Src/steering_calibration.c
                ../firmware/vehicle-ecu/Core/Src/remote_command_monitor.c)
@@ -62,6 +63,10 @@ target_link_libraries(motor_safety_test PRIVATE remote_protocol)
 foreach(scenario normal startup_low short_low pending_dedup pulse_train wake_pulse rolling_window independent restart_low transition_repeat transition_low)
     add_test(NAME motor_safety_${scenario} COMMAND motor_safety_test ${scenario})
 endforeach()
+
+add_executable(cpu_stats_test cpu_stats_test.c ../firmware/vehicle-ecu/Core/Src/cpu_stats.c)
+target_include_directories(cpu_stats_test PRIVATE ../firmware/vehicle-ecu/Core/Inc)
+add_test(NAME cpu_stats_window_jitter_and_load COMMAND cpu_stats_test)
 
 add_executable(control_watchdog_test control_watchdog_test.c
                ../firmware/vehicle-ecu/Core/Src/control_watchdog.c)
@@ -159,7 +164,7 @@ foreach(variant default right_inverted)
 endforeach()
 
 foreach(target int32_math_test remote_protocol remote_protocol_test debug_console_test vehicle_log_test remote_command_test remote_uart_test ${motor_test_targets}
-               fault_shutdown_test motor_safety_test control_watchdog_test
+               fault_shutdown_test motor_safety_test control_watchdog_test cpu_stats_test
                mt6701_pwm_test steering_encoder_test steering_calibration_test vehicle_control_test
                steering_controller_test drive_controller_test wheel_speed_test timebase_us_test
                board_controls_test

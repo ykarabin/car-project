@@ -149,6 +149,16 @@ void vehicle_log_format(uint32_t captured_at_ms, const vehicle_log_message_t *me
             uart->parse_errors, uart->partial_gap, uart->rearm_fail, uart->dropped);
         break;
     }
+    case VEHICLE_LOG_PERF: {
+        const cpu_stats_snapshot_t *perf = &message->data.perf;
+        debug_console_printf_at(captured_at_ms,
+                                "PERF loop avg=%" PRIu32 "us max=%" PRIu32 "us jitter=%" PRIu32
+                                "us cpu=%" PRIu32 ".%" PRIu32 "%% loops=%" PRIu32,
+                                perf->loop_avg_us, perf->loop_max_us, perf->jitter_max_us,
+                                perf->cpu_load_permille / 10U, perf->cpu_load_permille % 10U,
+                                perf->loops);
+        break;
+    }
     default: break;
     }
 }

@@ -167,6 +167,14 @@ standard names. */
 
 /* USER CODE BEGIN Defines */
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
+/* CPU load: time spent in the idle task, measured with the DWT cycle counter (cpu_cycles.c).
+ * These macros expand inside tasks.c, where pxCurrentTCB and xIdleTaskHandle are visible. */
+#if defined(__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__)
+void cpu_idle_switched_in(uint32_t is_idle);
+void cpu_idle_switched_out(uint32_t is_idle);
+#endif
+#define traceTASK_SWITCHED_IN() cpu_idle_switched_in((pxCurrentTCB == xIdleTaskHandle) ? 1U : 0U)
+#define traceTASK_SWITCHED_OUT() cpu_idle_switched_out((pxCurrentTCB == xIdleTaskHandle) ? 1U : 0U)
 /* USER CODE END Defines */
 
 #endif /* FREERTOS_CONFIG_H */

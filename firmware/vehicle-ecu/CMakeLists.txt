@@ -67,6 +67,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/remote_command_monitor.c
     Core/Src/vehicle_app.c
     Core/Src/remote_uart.c
+    Core/Src/cpu_stats.c
+    Core/Src/cpu_cycles.c
     ThirdParty/SEGGER_RTT/SEGGER_RTT.c
 )
 

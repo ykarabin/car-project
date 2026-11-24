@@ -241,6 +241,13 @@ static void test_events_and_special_status_formats(void)
         &(const vehicle_log_message_t){.kind = VEHICLE_LOG_UART,
                                        .data.uart = {.hal_errors = 1U, .noise = 1U, .dropped = 2U}},
         "WARN UART hal=1 ne=1 ore=0 fe=0 pe=0 invalid=0 gap=0 rearm=0 fifo_lost=2");
+    check(&(const vehicle_log_message_t){.kind = VEHICLE_LOG_PERF,
+                                         .data.perf = {.loop_avg_us = 12U,
+                                                       .loop_max_us = 41U,
+                                                       .jitter_max_us = 7U,
+                                                       .cpu_load_permille = 35U,
+                                                       .loops = 5000U}},
+          "PERF loop avg=12us max=41us jitter=7us cpu=3.5% loops=5000");
     check(
         &(const vehicle_log_message_t){
             .kind = VEHICLE_LOG_STATUS,

@@ -142,6 +142,7 @@ HAL_StatusTypeDef HAL_TIM_IC_Start_IT(TIM_HandleTypeDef *timer, uint32_t channel
 HAL_StatusTypeDef HAL_TIM_IC_Stop(TIM_HandleTypeDef *timer, uint32_t channel);
 uint32_t HAL_TIM_ReadCapturedValue(const TIM_HandleTypeDef *timer, uint32_t channel);
 uint32_t HAL_GetTick(void);
+extern uint32_t SystemCoreClock;
 uint32_t __get_PRIMASK(void);
 void __disable_irq(void);
 void __set_PRIMASK(uint32_t mask);

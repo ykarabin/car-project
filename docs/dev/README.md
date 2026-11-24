@@ -61,7 +61,7 @@ cmake --build build/host-tests
 ctest --test-dir build/host-tests --output-on-failure
 ```
 
-Збірка `tests/` містить і тести Gateway: 39 тестів (34 ECU, 5 Gateway).
+Збірка `tests/` містить і тести Gateway: 40 тестів (35 ECU, 5 Gateway).
 `firmware/remote-gateway/tests` можна зібрати й окремо. Тести моделюють
 HAL, таймери та FreeRTOS; вони не замінюють перевірку на стенді.
 
@@ -128,7 +128,9 @@ Arm 14.3.rel1; розміри образів можуть трохи відрі�
 
 ## Що ще не виміряно
 
-- Час циклу `defaultTask`, джитер і завантаження CPU.
+- Час циклу `defaultTask`, джитер і завантаження CPU: вимір є (`PERF`,
+  [rtos-and-logging.md](rtos-and-logging.md#вимірювання-продуктивності)),
+  чисел зі стенда ще немає.
 - Фізичне інжектування FLT (тривалий LOW і серія імпульсів) — лише хостові тести.
 - Рівень PWM на debug halt і контрольоване зависання задачі з IWDG-reset.
 - Робота приводу й керма під навантаженням, на покритті.
